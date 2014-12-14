@@ -1,6 +1,8 @@
 ofxMusicTheory
 ==============
 
+![image](https://github.com/borg/ofxMusicTheory/blob/master/ofxaddons_thumbnail.png)
+
 A music theory [openFrameworks](http://www.openframeworks.cc/) addon based on the [Python Mingus](https://code.google.com/p/mingus/) library
 
 
