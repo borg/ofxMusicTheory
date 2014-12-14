@@ -1,7 +1,7 @@
 ofxMusicTheory
 ==============
 
-A music harmony extension based on the [Python Mingus](https://code.google.com/p/mingus/) library
+A music theory [openFrameworks](http://www.openframeworks.cc/) addon based on the [Python Mingus](https://code.google.com/p/mingus/) library
 
 
 
