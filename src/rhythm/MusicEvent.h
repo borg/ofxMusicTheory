@@ -61,4 +61,12 @@ public:
     
 
 };
+
+
+ 
+inline ostream& operator<<(ostream& os, MusicTheory::MusicEvent& e){
+     os <<"MusicEvent beat: "<< e.beat<<", pos: "<<e.position<<endl;
+    return os;
+}
+
 #endif

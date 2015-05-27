@@ -43,35 +43,35 @@ class Note {
 	
   public:
    
-    static const float WHOLE = NOTE_1;
-    static const float HALF = NOTE_2;
-    static const float FOURTH = NOTE_4;
-    static const float FOURTH_DOTTED = NOTE_4_DOT;
-    static const float FOURTH_TRIPLET = NOTE_4_3;
-    static const float FOURTH_QUINTUPLET = NOTE_4_5;
-    static const float FOURTH_SEPTUPLET = NOTE_4_7;
+    static const float WHOLE;
+    static const float HALF;
+    static const float FOURTH;
+    static const float FOURTH_DOTTED;
+    static const float FOURTH_TRIPLET;
+    static const float FOURTH_QUINTUPLET;
+    static const float FOURTH_SEPTUPLET;
     
-    static const float EIGHT = NOTE_8;
-    static const float EIGHT_DOTTED = NOTE_8_DOT;
+    static const float EIGHT;
+    static const float EIGHT_DOTTED;
     //a triplet eighth note is a third of a quarter note.
-    static const float EIGHT_TRIPLET = NOTE_8_3;
-    static const float EIGHT_QUINTUPLET = NOTE_8_5;
-    static const float EIGHT_SEPTUPLET = NOTE_8_7;
+    static const float EIGHT_TRIPLET;
+    static const float EIGHT_QUINTUPLET;
+    static const float EIGHT_SEPTUPLET;
     
     
     
-    static const float SIXTEENTH = NOTE_16;
-    static const float SIXTEENTH_DOTTED = NOTE_16_DOT;
-    static const float SIXTEENTH_TRIPLET = NOTE_16_3;
-    static const float SIXTEENTH_QUINTUPLET = NOTE_16_5;
-    static const float SIXTEENTH_SEPTUPLET = NOTE_16_7;
+    static const float SIXTEENTH;
+    static const float SIXTEENTH_DOTTED;
+    static const float SIXTEENTH_TRIPLET;
+    static const float SIXTEENTH_QUINTUPLET;
+    static const float SIXTEENTH_SEPTUPLET;
 
   
-    static const float THIRTYSECOND = NOTE_32;
-    static const float THIRTYSECOND_DOTTED = NOTE_32_DOT;
-    static const float THIRTYSECOND_TRIPLET = NOTE_32_3;
-    static const float THIRTYSECOND_QUINTUPLET = NOTE_32_5;
-    static const float THIRTYSECOND_SEPTUPLET = NOTE_32_7;
+    static const float THIRTYSECOND;
+    static const float THIRTYSECOND_DOTTED;
+    static const float THIRTYSECOND_TRIPLET;
+    static const float THIRTYSECOND_QUINTUPLET;
+    static const float THIRTYSECOND_SEPTUPLET;
     
     string name;
     int octave;
@@ -109,7 +109,7 @@ class Note {
         
         _name = ofToUpper(_name.substr(0,1))+_name.substr(1);
         
-        int len = _name.size();
+       // int len = _name.size();
        // if(len ==1){
             name = _name;
             octave = _oct;
@@ -348,7 +348,7 @@ class Note {
         
         if(!&name){
             cout<<"Warning: No name"<<endl;
-            return;
+            return 0;
         }
         //root note
         string root = name.substr(0,1);
@@ -390,7 +390,7 @@ class Note {
     string intToNote(int note){
         if(note<0 || note>11){
             ofLog()<<note<<" outside note range 0-11"<<endl;
-            return;
+            return "";
         }
         
         string n[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
