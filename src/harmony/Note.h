@@ -356,8 +356,8 @@ class Note {
         vector<string>::iterator it = find(nNames.begin(),nNames.end(),root);
         int uid = it-nNames.begin();
         
-        int augs = Utils::occurenceNum(name,"#");
-        int dims = Utils::occurenceNum(name,"b");
+        int augs = ofStringTimesInString(name, "#");
+        int dims = ofStringTimesInString(name, "b");
         
         if(relative){
            int val = uid+augs-dims;
@@ -448,8 +448,8 @@ class Note {
          //translate C### to D#
        
         //get num of accidentals
-        int augs = Utils::occurenceNum(name,"#");
-        int dims = Utils::occurenceNum(name,"b");
+        int augs = ofStringTimesInString(name, "#");
+        int dims = ofStringTimesInString(name, "b");
         
         int diff = augs-dims;
         
