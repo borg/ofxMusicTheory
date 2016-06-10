@@ -38,7 +38,7 @@ class MelodyGenerator {
         
         //timeline starts on 1
         Bar b;
-        BarEvent be;
+        BarEventPtr be;
         
         
         for(int i=0;i<comp->bars.size();i++){
@@ -48,24 +48,24 @@ class MelodyGenerator {
             for(int ii=0;ii<b.chords.size();ii++){
                 be = b.chords[ii];
                 
-                Chord nextChord = be.chord;
+                Chord nextChord = be->chord;
                 
                 if(ii<(b.chords.size()-1)){
                     //more chords to come in this bar
-                    nextChord = b.chords[ii+1].chord;
+                    nextChord = b.chords[ii+1]->chord;
                 }else if(i<comp->bars.size()-1){
                     //more bars...more chords too?
                     if(comp->bars[i+1].chords.size()>0){
                         //chose first chord in next bar
-                        nextChord = comp->bars[i+1].chords[0].chord;
+                        nextChord = comp->bars[i+1].chords[0]->chord;
                     };
                     
                 }
                 //cout<<"beat: "<<be.time.beat<<" chord "<<be.chord<<endl;
                 
-                vector<Scale> chordScales = Scale::getScalesForChord(be.chord);
+                vector<Scale> chordScales = Scale::getScalesForChord(be->chord);
                 if(chordScales.size()>0){
-                    MelodyGenerator::generateMelodyOverChord(barWithMelody, be.chord,nextChord,be.time, chordScales[0]);//first scale is the deepest
+                    MelodyGenerator::generateMelodyOverChord(barWithMelody, be->chord,nextChord,be->time, chordScales[0]);//first scale is the deepest
                 }
                 // 1 get a scale
                 // 2 chose endpoint for phrase

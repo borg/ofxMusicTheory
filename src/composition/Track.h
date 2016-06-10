@@ -144,15 +144,15 @@ class Track {
            
         double wholeNoteInMilli = beatInMilli*(double)bar.denominator;
         
-        BarEvent b;
+        BarEventPtr b;
         double begin,duration,end;
         for(int i=0;i<bar.notes.size();i++){
             b = bar.notes[i];
-            begin = b.time.getBegin()*wholeNoteInMilli;
-            duration = b.time.getDuration()*wholeNoteInMilli;
+            begin = b->time.getBegin()*wholeNoteInMilli;
+            duration = b->time.getDuration()*wholeNoteInMilli;
             
             UniqueNote un;
-            un.note = b.note;
+            un.note = b->note;
             un.uid = ofToString(noteCounter);
             noteCounter++;
             
@@ -161,14 +161,14 @@ class Track {
             te.notes.push_back(un);
             te.isOnEvent = true;//else off
             te.fired = false;
-            te.noteName = b.note.getDiatonicName();
+            te.noteName = b->note.getDiatonicName();
             
             
             //is the start beat to be parsed later than the current beat?
-            //ie. is the delay extending beyond this beat (b.time.beat)?
+            //ie. is the delay extending beyond this beat (b->time.beat)?
             int noteEventDelay = floor(begin/beatInMilli);//0 - n number of beats
             
-            int startBeat =  totalBeats+b.time.beat+noteEventDelay;
+            int startBeat =  totalBeats+b->time.beat+noteEventDelay;
             
             te.time = begin - (double)noteEventDelay*beatInMilli;//mill
             events[startBeat].push_back(te);//copy?
@@ -180,7 +180,7 @@ class Track {
             //is this longer than this beat?
             //we want all events to slot in at the right beat where they actually happen
             int noteEventEnd = floor((begin+duration)/beatInMilli);
-            int endBeat =  totalBeats+b.time.beat+noteEventEnd;
+            int endBeat =  totalBeats+b->time.beat+noteEventEnd;
             
             
             
@@ -194,14 +194,14 @@ class Track {
             b = bar.chords[i];
             
             //chords have the same duration
-            begin = b.time.getBegin()*wholeNoteInMilli;
-            duration = b.time.getDuration()*wholeNoteInMilli;
+            begin = b->time.getBegin()*wholeNoteInMilli;
+            duration = b->time.getDuration()*wholeNoteInMilli;
             
             
             vector<UniqueNote> chordNotes;
-            for(int ii=0;ii<b.chord.getAllNotes().size();ii++){
+            for(int ii=0;ii<b->chord.getAllNotes().size();ii++){
                 UniqueNote un;
-                un.note = b.chord.getAllNotes()[ii];
+                un.note = b->chord.getAllNotes()[ii];
                 un.uid = ofToString(noteCounter);
                 chordNotes.push_back(un);
                 noteCounter++;
@@ -213,14 +213,14 @@ class Track {
                 te.isOnEvent = true;//else off
                 te.fired = false;
                
-                te.chordName = b.chord.getName();
+                te.chordName = b->chord.getName();
             
             
                 //is the start beat to be parsed later than the current beat?
-                //ie. is the delay extending beyond this beat (b.time.beat)?
+                //ie. is the delay extending beyond this beat (b->time.beat)?
                 int noteEventDelay = floor(begin/beatInMilli);//0 - n number of beats
                 
-                int startBeat =  totalBeats+b.time.beat+noteEventDelay;
+                int startBeat =  totalBeats+b->time.beat+noteEventDelay;
                 
                 te.time = begin-(double)noteEventDelay*beatInMilli;//mill
                 events[startBeat].push_back(te);//copy?
@@ -232,7 +232,7 @@ class Track {
             
                 //is this longer than this beat?
                 int noteEventEnd = floor((begin+duration)/beatInMilli);
-                int endBeat =  totalBeats+b.time.beat+noteEventEnd;
+                int endBeat =  totalBeats+b->time.beat+noteEventEnd;
                 te.time = begin+duration-beatInMilli*noteEventEnd;//mill
 
                 events[endBeat].push_back(te);//copy?
@@ -242,7 +242,7 @@ class Track {
         
         //add bar info to each beat of the track timeline
         
-        for(int i =1;i<=bar.beats;i++){
+        for(int i =1;i<=bar.getNumerator();i++){
             timeline[totalBeats+1] = bar;
             totalBeats++;
         }
@@ -390,7 +390,7 @@ class Track {
                 
             }
             
-                if(barCurrBeat >= currBarPtr->beats || currBeat==1){
+                if(barCurrBeat >= currBarPtr->getNumerator() || currBeat==1){
                     barCurrBeat=1;
                 }else{
                     barCurrBeat++;//inside bar
@@ -400,7 +400,7 @@ class Track {
             
             
             currDenominator = currBarPtr->denominator;
-            currTimeSignature = currBarPtr->beats;
+            currTimeSignature = currBarPtr->getNumerator();
                  
             beginTime = ofGetElapsedTimeMillis();
             
@@ -464,8 +464,8 @@ class Track {
         for(int i=0;i<track.bars.size();i++){
             xml.addTag("bar");
             
-            xml.setAttribute("bar", "beats",track.bars[i].beats, i);
-            xml.setAttribute("bar", "denominator",track.bars[i].denominator, i);
+            xml.setAttribute("bar", "beats",track.bars[i].getNumerator(), i);
+            xml.setAttribute("bar", "denominator",track.bars[i].getDenominator(), i);
             
             
             xml.pushTag("bar",i);
@@ -473,13 +473,13 @@ class Track {
             for(int ii=0;ii<track.bars[i].notes.size();ii++){
                 xml.addTag("note");
                 // xml.pushTag("note",ii);
-                xml.setAttribute("note", "name",track.bars[i].notes[ii].note.getDiatonicName(), ii);
-                xml.setAttribute("note", "int",track.bars[i].notes[ii].note.getInt(), ii);
-                xml.setAttribute("note", "octave",track.bars[i].notes[ii].note.getOctave(), ii);
+                xml.setAttribute("note", "name",track.bars[i].notes[ii]->note.getDiatonicName(), ii);
+                xml.setAttribute("note", "int",track.bars[i].notes[ii]->note.getInt(), ii);
+                xml.setAttribute("note", "octave",track.bars[i].notes[ii]->note.getOctave(), ii);
                 
-                xml.setAttribute("note", "beat",track.bars[i].notes[ii].time.getBeat(), ii);
-                xml.setAttribute("note", "begin",track.bars[i].notes[ii].time.getBegin(), ii);
-                xml.setAttribute("note", "duration",track.bars[i].notes[ii].time.getDuration(), ii);
+                xml.setAttribute("note", "beat",track.bars[i].notes[ii]->time.getBeat(), ii);
+                xml.setAttribute("note", "begin",track.bars[i].notes[ii]->time.getBegin(), ii);
+                xml.setAttribute("note", "duration",track.bars[i].notes[ii]->time.getDuration(), ii);
                 
                 //xml.popTag();
             }
@@ -489,12 +489,12 @@ class Track {
             for(int ii=0;ii<track.bars[i].chords.size();ii++){
                 xml.addTag("chord");
                 // xml.pushTag("note",ii);
-                xml.setAttribute("chord", "name",track.bars[i].chords[ii].chord.getName(), ii);
-                xml.setAttribute("chord", "root",track.bars[i].chords[ii].chord.getRoot().getName(), ii);
+                xml.setAttribute("chord", "name",track.bars[i].chords[ii]->chord.getName(), ii);
+                xml.setAttribute("chord", "root",track.bars[i].chords[ii]->chord.getRoot().getName(), ii);
                 
-                xml.setAttribute("chord", "beat",track.bars[i].chords[ii].time.getBeat(), ii);
-                xml.setAttribute("chord", "begin",track.bars[i].chords[ii].time.getBegin(), ii);
-                xml.setAttribute("chord", "duration",track.bars[i].chords[ii].time.getDuration(), ii);
+                xml.setAttribute("chord", "beat",track.bars[i].chords[ii]->time.getBeat(), ii);
+                xml.setAttribute("chord", "begin",track.bars[i].chords[ii]->time.getBegin(), ii);
+                xml.setAttribute("chord", "duration",track.bars[i].chords[ii]->time.getDuration(), ii);
             }
             xml.popTag();
         }

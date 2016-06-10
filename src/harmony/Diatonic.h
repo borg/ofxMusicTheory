@@ -27,7 +27,7 @@
 namespace MusicTheory{
     
     static const string fifths = "F,C,G,D,A,E,B";
-    static map<string, deque<Note> > _keyCache;
+    static map<string, deque<NotePtr> > _keyCache;
     
 class Diatonic {
 	
@@ -43,13 +43,13 @@ class Diatonic {
     */
     
     
-    static Note interval(Note key, Note startNote,int interval){
+    static NotePtr interval(NotePtr key, NotePtr startNote,int interval){
 	
 	    
-        deque<Note> notesInKey = getNotes(key);
+        deque<NotePtr> notesInKey = getNotes(key);
     
         for(int n=0;n<notesInKey.size();n++){
-            if(notesInKey[n].name == startNote.name){
+            if(notesInKey[n]->name == startNote->name){
                 return notesInKey[(n + interval) % 7];
             }
             
@@ -68,11 +68,11 @@ class Diatonic {
      Note however that the latter example will also get cleaned up to 'G'. \
      This function will raise an !NoteFormatError if the key isn't recognised
      */
-    static deque<Note> getNotes(Note key){
+    static deque<NotePtr> getNotes(NotePtr key){
         //check cache
  
-        if (_keyCache[key.name+ofToString(key.octave)].size()>0){
-            return _keyCache[key.name+ofToString(key.octave)];
+        if (_keyCache[key->name+ofToString(key->octave)].size()>0){
+            return _keyCache[key->name+ofToString(key->octave)];
         }
         
         /*
@@ -82,7 +82,7 @@ class Diatonic {
         
         
         //root note
-        string root = key.name.substr(0,1);
+        string root = key->name.substr(0,1);
         
         
         //fifth_index = 0 is a special case. It's the key of F and needs
@@ -94,36 +94,41 @@ class Diatonic {
         
        
         
-       deque<Note> result;
+       deque<NotePtr> result;
        // =keyCache[key.name];
-        string keyAccidentals = key.name.substr(1);
+        string keyAccidentals = key->name.substr(1);
         
         if(fifthIndex != 0){
            // cout<<"NOT FIFTH"<<endl;
        
             //add 
             string startNote = fifthArr[(fifthIndex - 1) % 7] + keyAccidentals;
-            result.push_back(Note(startNote,key.octave));
+            NotePtr note = NotePtr(new Note(startNote,key->octave));
+            result.push_back(note);
         
             for (int x=fifthIndex; x< fifthArr.size();x++){
-                result.push_back(Note(fifthArr[x]  +  keyAccidentals,key.octave));
+                NotePtr note = NotePtr(new Note(fifthArr[x]  +  keyAccidentals,key->octave));
+                result.push_back(note);
             }
             
             for (int x=0; x< fifthIndex-1;x++){
-                result.push_back(Note(fifthArr[x]  + keyAccidentals+ "#",key.octave));
+                NotePtr note = NotePtr(new Note(fifthArr[x]  + keyAccidentals+ "#",key->octave));
+                result.push_back(note);
             }
             
         }else{
             //cout<<" FIFTH"<<endl;
             for (int x=0; x< 6;x++){
-                result.push_back(Note(fifthArr[x] + keyAccidentals,key.octave));
+                NotePtr note = NotePtr(new Note(fifthArr[x] + keyAccidentals,key->octave));
+                result.push_back(note);
             }
-            result.push_back(Note("Bb" + keyAccidentals,key.octave));
+            NotePtr note = NotePtr(new Note("Bb" + keyAccidentals,key->octave));
+            result.push_back(note);
         }
         
         
         //this sorts all but doesn't start on key
-        sort(result.begin(),result.end(),Note::compare);
+        sort(result.begin(),result.end(),Note::comparePtr);
 
         
        // vector<Note>::iterator it = find(result.begin(),result.end(),root);
@@ -132,12 +137,12 @@ class Diatonic {
        // cout<<"tonic "<<tonic<<" "<<key<<" "<<result.size()<<endl;
         
         
-        deque<Note> keySorted;
+        deque<NotePtr> keySorted;
         keySorted.insert(keySorted.begin(),result.begin()+tonic, result.end());
         
         //now in next octave
         for(int i=0;i<tonic;i++){
-            result[i].changeOctave(1);
+            result[i]->changeOctave(1);
             keySorted.push_back(result[i]);
         }
         
@@ -149,7 +154,7 @@ class Diatonic {
         //Save result to cache
 
         
-        _keyCache[key.name+ofToString(key.octave)] = keySorted;
+        _keyCache[key->name+ofToString(key->octave)] = keySorted;
         return keySorted;
     }
     

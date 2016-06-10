@@ -12,7 +12,7 @@
 
 #include "ofMain.h"
 #include "Chord.h"
-#include "Utils.h"
+
 
 #include "Poco/RegularExpression.h"
 using Poco::RegularExpression;
@@ -40,7 +40,7 @@ namespace MusicTheory{
     
     
     
-    typedef Chord (*ChordFunctionPointer)(Note);
+    typedef ChordPtr (*ChordFunctionPointer)(NotePtr);
     typedef map<string,ChordFunctionPointer> ChordFunctionLookup;
 
     //TODO: Add other b # functions if there are like more subtonic/leadingtone
@@ -113,12 +113,12 @@ class Progression {
      will get you a major seventh chord. If you specifically want a dominanth 
      seventh, use Idom7.
      */
-    static deque<Chord> fromString(string progression, Note key = Note("C")){
+    static deque<ChordPtr> fromString(string progression, NotePtr key = Note::create("C")){
         vector<string> prog = ofSplitString(progression,",");
     
-        deque<Chord> result;
+        deque<ChordPtr> result;
         
-        Chord chord;
+        ChordPtr chord;
         
         for (int c=0;c<prog.size();c++){
             string chordStr = prog[c];
@@ -130,7 +130,7 @@ class Progression {
     }
 	
     
-    static Chord getChordfromChordFunction(string chordFunction, Note key = Note("C")){
+    static ChordPtr getChordfromChordFunction(string chordFunction, NotePtr key = Note::create("C")){
         //strip preceding accidentals from the string
         
         
@@ -159,22 +159,18 @@ class Progression {
         ChordTuple tuple = Progression::parse(chordTop);
         
         
-        Chord chord;
-        
-        chord = Progression::tupleToChord(tuple,key);
+        ChordPtr chord = Progression::tupleToChord(tuple,key);
         
         
             
         if(slash.size()==2){
             ChordTuple bassTuple = Progression::parse(bass);
-            Chord bassNote;
-            bassNote = Progression::tupleToChord(bassTuple,key);
-            chord.setBass(bassNote.notes[0]);
+            ChordPtr bassNote = Progression::tupleToChord(bassTuple,key);
+            chord->setBass(bassNote->notes[0]);
             
         }else if(poly.size()==2){
             ChordTuple polyTuple = Progression::parse(chordBottom);
-            Chord polyChord;
-            polyChord = Progression::tupleToChord(polyTuple,key);
+            ChordPtr polyChord = Progression::tupleToChord(polyTuple,key);
             //I don't know if anything is missing here...for subchord symbols etc
             /*
             Chord subchord;
@@ -183,7 +179,7 @@ class Progression {
             subchord.notes = chord.notes;
             subchord.setRoot(note);*/
             
-            chord.setPolyChord(polyChord);
+            chord->setPolyChord(polyChord);
         }
         
         return chord;
@@ -194,10 +190,10 @@ class Progression {
     /*
      Doesn't work?
      */
-    static vector<string> getFunctionFromChord(Chord chord, Note key = Note("C")){
+    static vector<string> getFunctionFromChord(ChordPtr chord, NotePtr key = Note::create("C")){
         
         
-        vector<string> prog = Progression::determine(chord.notes,key,true,true,true);//not sure about trues here when only returning one...unnecessary?
+        vector<string> prog = Progression::determine(chord->notes,key,true,true,true);//not sure about trues here when only returning one...unnecessary?
         
         
         return prog;
@@ -208,7 +204,7 @@ class Progression {
     /*
      Cm13 in of G returns IVm13 as the first option...use that by default
      */
-    static vector<string> getFunctionFromChordString(string chordString, Note key = Note("C")){
+    static vector<string> getFunctionFromChordString(string chordString, NotePtr key = Note::create("C")){
         
         
         vector<string> prog = Progression::determine(chordString,key,true,false,false);//not sure about trues here when only returning one...unnecessary?
@@ -216,13 +212,13 @@ class Progression {
         return prog;
     }
     
-    static Chord tupleToChord(ChordTuple tuple, Note key){
-        Chord chord;
-        Note transKey = key;
+    static ChordPtr tupleToChord(ChordTuple tuple, NotePtr key){
+        ChordPtr chord;
+        NotePtr transKey = key;
         
         
         if(tuple.accidentals!=0){
-            transKey = key.getTransposed(tuple.accidentals);
+            transKey = key->getTransposed(tuple.accidentals);
         }
         
         
@@ -231,7 +227,7 @@ class Progression {
             chord = Progression::getChordFromRoman(tuple.roman, transKey);
         }else{
             chord = Progression::getChordFromRoman(tuple.roman, transKey);
-            chord = Chord::chordFromShorthand(tuple.suffix,chord.notes[0]);//add dim etc
+            chord = Chord::chordFromShorthand(tuple.suffix,chord->notes[0]);//add dim etc
         }
         
         //Let the accidentals do their work
@@ -278,9 +274,10 @@ class Progression {
         
         
         //any sharper regex head please improve this
-        int augs = Utils::occurenceNum(acc,"#");
-        int dims = Utils::occurenceNum(acc,"b");
-        
+    
+        int augs = ofStringTimesInString(acc, "#");
+        int dims = ofStringTimesInString(acc, "b");
+
         
         /*
         
@@ -338,9 +335,9 @@ class Progression {
     
 
     
-    static Chord getChordFromRoman(string romanSymbol,Note key){
+    static ChordPtr getChordFromRoman(string romanSymbol,NotePtr key){
         ChordFunctionLookup cf = ChordFunctions;
-        Chord cc;
+        ChordPtr cc;
         if(cf[romanSymbol]){
             cc= cf[romanSymbol](key);
             //cout<<"getChordFromRoman "<<romanSymbol<<endl;
@@ -706,7 +703,7 @@ class Progression {
      */
     
     
-    static vector< vector<string> > determine(vector< deque<Note> > notes, Note key, bool shorthand = false){
+    static vector< vector<string> > determine(vector< deque<NotePtr> > notes, NotePtr key, bool shorthand = false){
         vector< vector<string> > result;
         
         for(int i=0;i<notes.size();i++){
@@ -720,11 +717,11 @@ class Progression {
     
     
     
-    static vector< vector<string> > determine(vector<Chord> chords, Note key, bool shorthand = false){
+    static vector< vector<string> > determine(vector<ChordPtr> chords, NotePtr key, bool shorthand = false){
         vector< vector<string> > result;
         
         for(int i=0;i<chords.size();i++){
-            result.push_back(Progression::determine(chords[i].notes,key,shorthand));
+            result.push_back(Progression::determine(chords[i]->notes,key,shorthand));
         }
         
         return result;
@@ -733,11 +730,11 @@ class Progression {
     /*
      <Cm7,Adim,E7b9>
      */
-    static vector< vector<string> > determine(vector<string> chordNames, Note key, bool shorthand = false, bool useInversions = true, bool usePoly = true){
+    static vector< vector<string> > determine(vector<string> chordNames, NotePtr key, bool shorthand = false, bool useInversions = true, bool usePoly = true){
         vector< vector<string> > result;
         
         for(int i=0;i<chordNames.size();i++){
-            result.push_back(Progression::determine(Chord::getChordFromString(chordNames[i]).notes,key,shorthand,useInversions,usePoly));
+            result.push_back(Progression::determine(Chord::getChordFromString(chordNames[i])->notes,key,shorthand,useInversions,usePoly));
         }
         
         return result;
@@ -745,7 +742,7 @@ class Progression {
     }
     
     
-    static vector<string> determine(string chordName, Note key, bool shorthand = false, bool useInversions = true, bool usePoly = true){
+    static vector<string> determine(string chordName, NotePtr key, bool shorthand = false, bool useInversions = true, bool usePoly = true){
         
         
         
@@ -773,8 +770,8 @@ class Progression {
         result.push_back(func);
         
         if(useInversions || usePoly){
-            Chord chord = Chord::getChordFromString(chordName);
-            vector<string> permutations = Progression::determine(chord.notes,key,shorthand,useInversions,usePoly);
+            ChordPtr chord = Chord::getChordFromString(chordName);
+            vector<string> permutations = Progression::determine(chord->notes,key,shorthand,useInversions,usePoly);
             for(int i=0;i<permutations.size();i++){
                 if(permutations[i]!=func){
                     result.push_back(permutations[i]);
@@ -786,7 +783,7 @@ class Progression {
     }
     
     
-    static vector<string> determine(deque<Note> notes, Note key, bool shorthand = true, bool useInversions = true, bool usePoly = true){
+    static vector<string> determine(deque<NotePtr> notes, NotePtr key, bool shorthand = true, bool useInversions = true, bool usePoly = true){
         vector<string> result;
         if(notes.size()==0){
             ofLog()<<"Warning: Progression::determin empty notes"<<endl;
@@ -834,7 +831,7 @@ class Progression {
     }
     
                                                                             
-    static string getFunctionInRoman(string chordStr,Note key, bool shorthand = true){
+    static string getFunctionInRoman(string chordStr,NotePtr key, bool shorthand = true){
         
         //this only affects shorthand false
         map<string, string> func_dict;
@@ -876,13 +873,13 @@ class Progression {
         
         
         
-        Chord chord = Chord::getChordFromString(chordStr);
-        cout<<"Determine function for "<<chordStr<<" "<<chord.name<<endl;
-        Note root = chord.getRoot();
+        ChordPtr chord = Chord::getChordFromString(chordStr);
+        cout<<"Determine function for "<<chordStr<<" "<<chord->name<<endl;
+        NotePtr root = chord->getRoot();
         
         //string chord_type = chord.getChordSymbol();
         
-        string chord_type = chord.name;
+        string chord_type = chord->name;
         
         //Determine chord function
         
@@ -981,8 +978,6 @@ class Progression {
             }
         }
         cout<<" ]"<<endl;
-        
-        
     }
     
     static void print(vector<string> substitutes){
@@ -995,8 +990,6 @@ class Progression {
             }
         }
         cout<<" ]"<<endl;
-        
-        
     }
     
     static void print(vector< vector<string> > prog){
@@ -1017,10 +1010,20 @@ class Progression {
             }
         }
         cout<<" ]"<<endl;
-        
-        
     }
     
+    
+    static void print(deque<ChordPtr> chords){
+        
+        cout <<"[ ";
+        for(int i = 0;i<chords.size();i++){
+            cout<<chords[i];
+            if(i<chords.size()-1){
+                cout<<", ";
+            }
+        }
+        cout<<" ]"<<endl;
+    }
     
 private:
     
@@ -1077,6 +1080,11 @@ private:
      }
     
 };//class
+
+
+typedef shared_ptr<Progression> ProgressionPtr;
+
+
 };//namespace
 
 #endif

@@ -47,7 +47,7 @@
 
 namespace MusicTheory{
     class Scale;
-    typedef Scale (*ScaleFunctionPointer)(Note);
+    typedef shared_ptr<Scale> (*ScaleFunctionPointer)(NotePtr);
     typedef map<string,ScaleFunctionPointer> ScaleFunctionLookup;
     
     const Lookup::value_type chsc[] = {
@@ -136,9 +136,20 @@ class Scale {
 	
 	Scale(){};
     
-    deque<Note> notes;
+    deque<NotePtr> notes;
     string name;
-
+    
+    
+        //factory methods
+    
+    static shared_ptr<Scale>create(){
+        return shared_ptr<Scale>(new Scale());
+    }
+    
+    shared_ptr<Scale> copy(){
+        return shared_ptr<Scale>(new Scale(*this));//copy
+    }
+    
     
     //The diatonic scales and its modes
     /*
@@ -148,13 +159,13 @@ class Scale {
      >>> diatonic("C")
      ["C", "D", "E", "F", "G", "A", "B"]
      */
-    static deque<Note> diatonic(Note note){
+    static deque<NotePtr> diatonic(NotePtr note){
 	    return Diatonic::getNotes(note);
     }
-    static Scale getDiatonic(Note note){
-        Scale scale;
-        scale.name = "diatonic";//same as ionian, doremi etc
-        scale.notes = Scale::diatonic(note);
+    static shared_ptr<Scale> getDiatonic(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "diatonic";//same as ionian, doremi etc
+        scale->notes = Scale::diatonic(note);
         return scale;
     }
     
@@ -166,14 +177,14 @@ class Scale {
      ["C", "D", "E", "F", "G", "A", "B"]
      */
     
-    static deque<Note> ionian(Note note){
+    static deque<NotePtr> ionian(NotePtr note){
         return Scale::diatonic(note);
     }
     
-    static Scale getIonian(Note note){
-        Scale scale;
-        scale.name = "ionian";//same as ionian, doremi etc
-        scale.notes = Scale::diatonic(note);
+    static shared_ptr<Scale> getIonian(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "ionian";//same as ionian, doremi etc
+        scale->notes = Scale::diatonic(note);
         return scale;
     }
     
@@ -186,18 +197,18 @@ class Scale {
 
      */
     
-    static deque<Note> dorian(Note note){
+    static deque<NotePtr> dorian(NotePtr note){
 
-        deque<Note> ionian = Scale::ionian(Interval::minorSeventh(note));
+        deque<NotePtr> ionian = Scale::ionian(Interval::minorSeventh(note));
         
         //all other diatonic scale are created from the ionian
         return Scale::offset(ionian,1);
     }
     
-    static Scale getDorian(Note note){
-        Scale scale;
-        scale.name = "dorian";
-        scale.notes = Scale::dorian(note);
+    static shared_ptr<Scale> getDorian(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "dorian";
+        scale->notes = Scale::dorian(note);
         return scale;
     }
     
@@ -208,17 +219,17 @@ class Scale {
      >>> phrygian("E")
      ["E", "F", "G", "A", "B", "C", "D"]
      */
-    static deque<Note> phrygian(Note note){
-        deque<Note> ionian = Scale::ionian(Interval::minorSixth(note));
+    static deque<NotePtr> phrygian(NotePtr note){
+        deque<NotePtr> ionian = Scale::ionian(Interval::minorSixth(note));
     
         //all other diatonic scale are created from the ionian
         return Scale::offset(ionian,2);
     }
     
-    static Scale getPhrygian(Note note){
-        Scale scale;
-        scale.name = "phrygian";
-        scale.notes = Scale::phrygian(note);
+    static shared_ptr<Scale> getPhrygian(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "phrygian";
+        scale->notes = Scale::phrygian(note);
         return scale;
     }
     
@@ -233,17 +244,17 @@ class Scale {
      ["F", "G", "A", B", "C", "D", "E"]
      */
     
-    static deque<Note> lydian(Note note){
-        deque<Note> ionian = Scale::ionian(Interval::perfectFifth(note));
+    static deque<NotePtr> lydian(NotePtr note){
+        deque<NotePtr> ionian = Scale::ionian(Interval::perfectFifth(note));
         
         //all other diatonic scale are created from the ionian
         return offset(ionian,3);
     }
     
-    static Scale getLydian(Note note){
-        Scale scale;
-        scale.name = "lydian";
-        scale.notes = Scale::lydian(note);
+    static shared_ptr<Scale> getLydian(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "lydian";
+        scale->notes = Scale::lydian(note);
         return scale;
     }
     
@@ -254,18 +265,18 @@ class Scale {
      >>> mixolydian("G")
      ["G", "A", "B", "C", "D", "E", "F"]
      */
-    static deque<Note> mixolydian(Note note){
+    static deque<NotePtr> mixolydian(NotePtr note){
         
-        deque<Note> ionian = Scale::ionian(Interval::perfectFourth(note));
+        deque<NotePtr> ionian = Scale::ionian(Interval::perfectFourth(note));
         //all other diatonic scale are created from the ionian
         return Scale::offset(ionian,4);
     }
     
     
-    static Scale getMixolydian(Note note){
-        Scale scale;
-        scale.name = "mixolydian";
-        scale.notes = Scale::mixolydian(note);
+    static shared_ptr<Scale> getMixolydian(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "mixolydian";
+        scale->notes = Scale::mixolydian(note);
         return scale;
     }
     
@@ -281,16 +292,16 @@ class Scale {
      also descending melodic minor 
      */
     
-    static deque<Note> aeolian(Note note){
-        deque<Note> ionian = Scale::ionian(Interval::minorThird(note));
+    static deque<NotePtr> aeolian(NotePtr note){
+        deque<NotePtr> ionian = Scale::ionian(Interval::minorThird(note));
         //all other diatonic scale are created from the ionian
         return Scale::offset(ionian,5);
     }
     
-    static Scale getAeolian(Note note){
-        Scale scale;
-        scale.name = "aeolian";
-        scale.notes = Scale::aeolian(note);
+    static shared_ptr<Scale> getAeolian(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "aeolian";
+        scale->notes = Scale::aeolian(note);
         return scale;
     }
     
@@ -301,16 +312,16 @@ class Scale {
      >>> locrian("B")
      ["B", "C", "D", "E", "F", "G", "A"]
      */
-    static deque<Note> locrian(Note note){
-        deque<Note> ionian = Scale::ionian(Interval::minorSecond(note));
+    static deque<NotePtr> locrian(NotePtr note){
+        deque<NotePtr> ionian = Scale::ionian(Interval::minorSecond(note));
         //all other diatonic scale are created from the ionian
         return Scale::offset(ionian,6);
     }
     
-    static Scale getLocrian(Note note){
-        Scale scale;
-        scale.name = "locrian";
-        scale.notes = Scale::locrian(note);
+    static shared_ptr<Scale> getLocrian(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "locrian";
+        scale->notes = Scale::locrian(note);
         return scale;
     }
     
@@ -326,15 +337,15 @@ class Scale {
      >>> natural_minor("A")
      ["A", "B", "C", "D", "E", "F", "G"]
      */
-    static deque<Note> naturalMinor(Note note){
-        deque<Note> scale = Diatonic::getNotes(Interval::minorThird(note));
+    static deque<NotePtr> naturalMinor(NotePtr note){
+        deque<NotePtr> scale = Diatonic::getNotes(Interval::minorThird(note));
         return Scale::offset(scale,5);
     }
     
-    static Scale getNaturalMinor(Note note){
-        Scale scale;
-        scale.name = "naturalMinor";
-        scale.notes = Scale::naturalMinor(note);
+    static shared_ptr<Scale> getNaturalMinor(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "naturalMinor";
+        scale->notes = Scale::naturalMinor(note);
         return scale;
     }
     
@@ -345,16 +356,16 @@ class Scale {
      >>> harmonic_minor("A")
      "A", "B", "C", "D", "E", "F", "G#"]
      */
-    static deque<Note> harmonicMinor(Note note){
-        deque<Note> scale = Scale::naturalMinor(note);
-        scale[6].augment();
+    static deque<NotePtr> harmonicMinor(NotePtr note){
+        deque<NotePtr> scale = Scale::naturalMinor(note);
+        scale[6]->augment();
         return scale;
     }
     
-    static Scale getHarmonicMinor(Note note){
-        Scale scale;
-        scale.name = "harmonicMinor";
-        scale.notes = Scale::harmonicMinor(note);
+    static shared_ptr<Scale> getHarmonicMinor(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "harmonicMinor";
+        scale->notes = Scale::harmonicMinor(note);
         return scale;
     }
     
@@ -369,16 +380,16 @@ class Scale {
      
      
      */
-    static deque<Note> melodicMinor(Note note){
-        deque<Note> scale = Scale::harmonicMinor(note);
-        scale[5].augment();
+    static deque<NotePtr> melodicMinor(NotePtr note){
+        deque<NotePtr> scale = Scale::harmonicMinor(note);
+        scale[5]->augment();
         return scale;
     }
     
-    static Scale getMelodicMinor(Note note){
-        Scale scale;
-        scale.name = "melodicMinor";
-        scale.notes = Scale::melodicMinor(note);
+    static shared_ptr<Scale> getMelodicMinor(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "melodicMinor";
+        scale->notes = Scale::melodicMinor(note);
         return scale;
     }
     
@@ -386,45 +397,45 @@ class Scale {
      Phrygian #6
      Dorian b2
      */
-    static deque<Note> melodicMinorII(Note note){
-        deque<Note> scale = Scale::phrygian(note);
-        scale[5].augment();
+    static deque<NotePtr> melodicMinorII(NotePtr note){
+        deque<NotePtr> scale = Scale::phrygian(note);
+        scale[5]->augment();
         return scale;
     }
     
-    static Scale getMelodicMinorII(Note note){
-        Scale scale;
-        scale.name = "melodicMinorII";
-        scale.notes = Scale::melodicMinorII(note);
+    static shared_ptr<Scale> getMelodicMinorII(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "melodicMinorII";
+        scale->notes = Scale::melodicMinorII(note);
         return scale;
     }
     
-    static Scale getPhrygianRaisedSixth(Note note){
-        Scale scale;
-        scale.name = "phrygian#6";
-        scale.notes = Scale::melodicMinorII(note);
+    static shared_ptr<Scale> getPhrygianRaisedSixth(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "phrygian#6";
+        scale->notes = Scale::melodicMinorII(note);
         return scale;
     }
     /*
      Lydian augmented
      */
     
-    static deque<Note> melodicMinorIII(Note note){
-        deque<Note> scale = Scale::lydian(note);
-        scale[4].augment();
+    static deque<NotePtr> melodicMinorIII(NotePtr note){
+        deque<NotePtr> scale = Scale::lydian(note);
+        scale[4]->augment();
         return scale;
     }
     
-    static Scale getMelodicMinorIII(Note note){
-        Scale scale;
-        scale.name = "melodicMinorIII";
-        scale.notes = Scale::melodicMinor(note);
+    static shared_ptr<Scale> getMelodicMinorIII(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "melodicMinorIII";
+        scale->notes = Scale::melodicMinor(note);
         return scale;
     }
-    static Scale getLydianAugmented(Note note){
-        Scale scale;
-        scale.name = "lydianAugmented";
-        scale.notes = Scale::melodicMinor(note);
+    static shared_ptr<Scale> getLydianAugmented(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "lydianAugmented";
+        scale->notes = Scale::melodicMinor(note);
         return scale;
     }
     
@@ -433,22 +444,22 @@ class Scale {
      Mixolydian #4
      */
     
-    static deque<Note> melodicMinorIV(Note note){
-        deque<Note> scale = Scale::lydian(note);
-        scale[6].diminish();
+    static deque<NotePtr> melodicMinorIV(NotePtr note){
+        deque<NotePtr> scale = Scale::lydian(note);
+        scale[6]->diminish();
         return scale;
     }
     
-    static Scale getMelodicMinorIV(Note note){
-        Scale scale;
-        scale.name = "melodicMinorIV";
-        scale.notes = Scale::melodicMinorIV(note);
+    static shared_ptr<Scale> getMelodicMinorIV(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "melodicMinorIV";
+        scale->notes = Scale::melodicMinorIV(note);
         return scale;
     }
-    static Scale getLydianDominant(Note note){
-        Scale scale;
-        scale.name = "lydianDominant";
-        scale.notes = Scale::melodicMinorIV(note);
+    static shared_ptr<Scale> getLydianDominant(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "lydianDominant";
+        scale->notes = Scale::melodicMinorIV(note);
         return scale;
     }
     
@@ -458,22 +469,22 @@ class Scale {
      Mixolydian b6
      */
     
-    static deque<Note> melodicMinorV(Note note){
-        deque<Note> scale = Scale::mixolydian(note);
-        scale[5].diminish();
+    static deque<NotePtr> melodicMinorV(NotePtr note){
+        deque<NotePtr> scale = Scale::mixolydian(note);
+        scale[5]->diminish();
         return scale;
     }
     
-    static Scale getMelodicMinorV(Note note){
-        Scale scale;
-        scale.name = "melodicMinorV";
-        scale.notes = Scale::melodicMinorV(note);
+    static shared_ptr<Scale> getMelodicMinorV(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "melodicMinorV";
+        scale->notes = Scale::melodicMinorV(note);
         return scale;
     }
-    static Scale getMixolydianLoweredSixth(Note note){
-        Scale scale;
-        scale.name = "mixolydianLoweredSixth";
-        scale.notes = Scale::melodicMinorV(note);
+    static shared_ptr<Scale> getMixolydianLoweredSixth(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "mixolydianLoweredSixth";
+        scale->notes = Scale::melodicMinorV(note);
         return scale;
     }
     
@@ -481,22 +492,22 @@ class Scale {
      Locrian #2
      */
     
-    static deque<Note> melodicMinorVI(Note note){
-        deque<Note> scale = Scale::locrian(note);
-        scale[1].augment();
+    static deque<NotePtr> melodicMinorVI(NotePtr note){
+        deque<NotePtr> scale = Scale::locrian(note);
+        scale[1]->augment();
         return scale;
     }
     
-    static Scale getMelodicMinorVI(Note note){
-        Scale scale;
-        scale.name = "melodicMinorVI";
-        scale.notes = Scale::melodicMinorVI(note);
+    static shared_ptr<Scale> getMelodicMinorVI(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "melodicMinorVI";
+        scale->notes = Scale::melodicMinorVI(note);
         return scale;
     }
-    static Scale getHalfDiminished(Note note){
-        Scale scale;
-        scale.name = "halfDiminished";
-        scale.notes = Scale::melodicMinorVI(note);
+    static shared_ptr<Scale> getHalfDiminished(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "halfDiminished";
+        scale->notes = Scale::melodicMinorVI(note);
         return scale;
     }
     
@@ -508,22 +519,22 @@ class Scale {
      Altered scale
      */
     
-    static deque<Note> melodicMinorVII(Note note){
-        deque<Note> scale = Scale::locrian(note);
-        scale[3].diminish();
+    static deque<NotePtr> melodicMinorVII(NotePtr note){
+        deque<NotePtr> scale = Scale::locrian(note);
+        scale[3]->diminish();
         return scale;
     }
     
-    static Scale getMelodicMinorVII(Note note){
-        Scale scale;
-        scale.name = "melodicMinorVII";
-        scale.notes = Scale::melodicMinorVII(note);
+    static shared_ptr<Scale> getMelodicMinorVII(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "melodicMinorVII";
+        scale->notes = Scale::melodicMinorVII(note);
         return scale;
     }
-    static Scale getSuperLocrian(Note note){
-        Scale scale;
-        scale.name = "superLocrian";
-        scale.notes = Scale::melodicMinorVII(note);
+    static shared_ptr<Scale> getSuperLocrian(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "superLocrian";
+        scale->notes = Scale::melodicMinorVII(note);
         return scale;
     }
     
@@ -534,23 +545,23 @@ class Scale {
     //Other scales
     
     
-    static deque<Note> lydianDiminished(Note note){
-        deque<Note> scale = Scale::ionian(note);
-        scale[2].diminish();
-        scale[3].augment();
+    static deque<NotePtr> lydianDiminished(NotePtr note){
+        deque<NotePtr> scale = Scale::ionian(note);
+        scale[2]->diminish();
+        scale[3]->augment();
         return scale;
     }
     
-    static Scale getLydianDiminished(Note note){
-        Scale scale;
-        scale.name = "lydianDiminished";
-        scale.notes = Scale::lydianDiminished(note);
+    static shared_ptr<Scale> getLydianDiminished(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "lydianDiminished";
+        scale->notes = Scale::lydianDiminished(note);
         return scale;
     }
     
     
-    static deque<Note> pentatonicMinor(Note note){
-        deque<Note> scale;
+    static deque<NotePtr> pentatonicMinor(NotePtr note){
+        deque<NotePtr> scale;
         scale.push_back(note);
         scale.push_back(Interval::minorThird(note));
         scale.push_back(Interval::perfectFourth(note));
@@ -559,17 +570,17 @@ class Scale {
         return scale;
     }
     
-    static Scale getPentatonicMinor(Note note){
-        Scale scale;
-        scale.name = "pentatonicMinor";
-        scale.notes = Scale::inSen(note);
+    static shared_ptr<Scale> getPentatonicMinor(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "pentatonicMinor";
+        scale->notes = Scale::inSen(note);
         return scale;
     }
    
     
     
-    static deque<Note> pentatonicMajor(Note note){
-        deque<Note> scale;
+    static deque<NotePtr> pentatonicMajor(NotePtr note){
+        deque<NotePtr> scale;
         scale.push_back(note);
         scale.push_back(Interval::majorSecond(note));
         scale.push_back(Interval::majorThird(note));
@@ -578,15 +589,15 @@ class Scale {
         return scale;
     }
     
-    static Scale getPentatonicMajor(Note note){
-        Scale scale;
-        scale.name = "pentatonicMajor";
-        scale.notes = Scale::pentatonicMajor(note);
+    static shared_ptr<Scale> getPentatonicMajor(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "pentatonicMajor";
+        scale->notes = Scale::pentatonicMajor(note);
         return scale;
     }
     
-    static deque<Note> pentatonicDominant(Note note){
-        deque<Note> scale;
+    static deque<NotePtr> pentatonicDominant(NotePtr note){
+        deque<NotePtr> scale;
         scale.push_back(note);
         scale.push_back(Interval::majorSecond(note));
         scale.push_back(Interval::majorThird(note));
@@ -595,26 +606,26 @@ class Scale {
         return scale;
     }
     
-    static Scale getPentatonicDominant(Note note){
-        Scale scale;
-        scale.name = "pentatonicDominant";
-        scale.notes = Scale::pentatonicDominant(note);
+    static shared_ptr<Scale> getPentatonicDominant(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "pentatonicDominant";
+        scale->notes = Scale::pentatonicDominant(note);
         return scale;
     }
     
     
     
     
-    static deque<Note> blues(Note note){
-        deque<Note> scale = Scale::pentatonicMinor(note);
+    static deque<NotePtr> blues(NotePtr note){
+        deque<NotePtr> scale = Scale::pentatonicMinor(note);
         scale.insert(scale.begin()+3, Interval::minorFifth(note));
         return scale;
     }
     
-    static Scale getBlues(Note note){
-        Scale scale;
-        scale.name = "blues";
-        scale.notes = Scale::blues(note);
+    static shared_ptr<Scale> getBlues(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "blues";
+        scale->notes = Scale::blues(note);
         return scale;
     }
     
@@ -628,18 +639,18 @@ class Scale {
      
      */
     
-    static deque<Note> bebopDominant(Note note){
-        deque<Note> bebop = Scale::mixolydian(note);
-        Note maj7 = note.getOctaveUp();
-        maj7.diminish();
+    static deque<NotePtr> bebopDominant(NotePtr note){
+        deque<NotePtr> bebop = Scale::mixolydian(note);
+        NotePtr maj7 = note->getOctaveUp();
+        maj7->diminish();
         bebop.insert(bebop.end(), maj7);
         return bebop;
     }
     
-    static Scale getBebopDominant(Note note){
-        Scale scale;
-        scale.name = "bebopDominant";
-        scale.notes = Scale::bebopDominant(note);
+    static shared_ptr<Scale> getBebopDominant(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "bebopDominant";
+        scale->notes = Scale::bebopDominant(note);
         return scale;
     }
     
@@ -648,22 +659,22 @@ class Scale {
      Borg: This is the unique minor flamenco scale,
      a phrygian with added major third
      */
-    static deque<Note> flamenco(Note note){
-        deque<Note> scale = Scale::phrygian(note);
-        Note majThird = scale[2].getAugmented();
+    static deque<NotePtr> flamenco(NotePtr note){
+        deque<NotePtr> scale = Scale::phrygian(note);
+        NotePtr majThird = scale[2]->getAugmented();
         scale.insert(scale.begin()+3, majThird);
         return scale;
     }
     
-    static Scale getFlamenco(Note note){
-        Scale scale;
-        scale.name = "flamenco";
-        scale.notes = Scale::flamenco(note);
+    static shared_ptr<Scale> getFlamenco(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "flamenco";
+        scale->notes = Scale::flamenco(note);
         return scale;
     }
     
-    static deque<Note> chromatic(Note note){
-        deque<Note> scale;
+    static deque<NotePtr> chromatic(NotePtr note){
+        deque<NotePtr> scale;
         scale.push_back(note);
         for(int i =1;i<12;i++){
             scale.push_back(Interval::getInterval(note,i));
@@ -672,10 +683,10 @@ class Scale {
     }
     
     
-    static Scale getChromatic(Note note){
-        Scale scale;
-        scale.name = "chromatic";
-        scale.notes = Scale::chromatic(note);
+    static shared_ptr<Scale> getChromatic(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "chromatic";
+        scale->notes = Scale::chromatic(note);
         return scale;
     }
     
@@ -683,44 +694,44 @@ class Scale {
      Japanese scales
      */
     
-    static deque<Note> inSen(Note note){
-        deque<Note> scale = Scale::pentatonicMinor(note);
+    static deque<NotePtr> inSen(NotePtr note){
+        deque<NotePtr> scale = Scale::pentatonicMinor(note);
         scale[1] = Interval::minorSecond(note);
         return scale;
     }
     
-    static Scale getInSen(Note note){
-        Scale scale;
-        scale.name = "insen";
-        scale.notes = Scale::inSen(note);
+    static shared_ptr<Scale> getInSen(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "insen";
+        scale->notes = Scale::inSen(note);
         return scale;
     }
     
     
-    static deque<Note> hirajoshi(Note note){
-        deque<Note> scale = Scale::pentatonicMinor(note);
+    static deque<NotePtr> hirajoshi(NotePtr note){
+        deque<NotePtr> scale = Scale::pentatonicMinor(note);
         scale[1] = Interval::minorSecond(note);
         scale[4] = Interval::minorSixth(note);
         return scale;
     }
     
-    static Scale getHirajoshi(Note note){
-        Scale scale;
-        scale.name = "hirajoshi";
-        scale.notes = Scale::hirajoshi(note);
+    static shared_ptr<Scale> getHirajoshi(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "hirajoshi";
+        scale->notes = Scale::hirajoshi(note);
         return scale;
     }
     
-    static deque<Note> hindu(Note note){
-        deque<Note> scale = Scale::ionian(note);
-        scale[5].diminish();
+    static deque<NotePtr> hindu(NotePtr note){
+        deque<NotePtr> scale = Scale::ionian(note);
+        scale[5]->diminish();
         return scale;
     }
     
-    static Scale getHindu(Note note){
-        Scale scale;
-        scale.name = "hindu";
-        scale.notes = Scale::hindu(note);
+    static shared_ptr<Scale> getHindu(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "hindu";
+        scale->notes = Scale::hindu(note);
         return scale;
     }
     
@@ -731,8 +742,8 @@ class Scale {
      >>> whole_note("C")
      ["C", "D", "E", "F#", "G#", "A#"]
      */
-     static deque<Note> wholeNote(Note note){
-         deque<Note> scale;
+     static deque<NotePtr> wholeNote(NotePtr note){
+         deque<NotePtr> scale;
          scale.push_back(note);
          for(int i =0;i<5;i++){
              note = Interval::majorSecond(note);
@@ -742,10 +753,10 @@ class Scale {
     }
     
     
-    static Scale getWholeNote(Note note){
-        Scale scale;
-        scale.name = "wholeNote";
-        scale.notes = Scale::wholeNote(note);
+    static shared_ptr<Scale> getWholeNote(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "wholeNote";
+        scale->notes = Scale::wholeNote(note);
         return scale;
     }
     
@@ -757,14 +768,14 @@ class Scale {
      ['C', 'D', 'Eb', 'F', 'Gb', 'Ab', 'A', 'B']
      */
     
-    static deque<Note> diminished(Note note){
+    static deque<NotePtr> diminished(NotePtr note){
          
              
-        deque<Note> scale;
+        deque<NotePtr> scale;
         scale.push_back(note);
-        Note n = note;
+        NotePtr n = note;
         for(int i=0;i<3;i++){
-            deque<Note> step = wholeStepHalfStep(n);
+            deque<NotePtr> step = wholeStepHalfStep(n);
             scale.insert(scale.end(),step.begin(),step.end());
             n = scale[scale.size()-1];
         }
@@ -777,17 +788,17 @@ class Scale {
         return scale;
      }
     
-    static Scale getDiminished(Note note){
-        Scale scale;
-        scale.name = "diminished";
-        scale.notes = Scale::diminished(note);
+    static shared_ptr<Scale> getDiminished(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "diminished";
+        scale->notes = Scale::diminished(note);
         return scale;
     }
     
-    static deque<Note> wholeStepHalfStep(Note note){
-        Note maj2 = Interval::majorSecond(note);
-        Note min3 = Interval::minorThird(note);
-        deque<Note> scale;
+    static deque<NotePtr> wholeStepHalfStep(NotePtr note){
+        NotePtr maj2 = Interval::majorSecond(note);
+        NotePtr min3 = Interval::minorThird(note);
+        deque<NotePtr> scale;
         scale.push_back(maj2);
         scale.push_back(min3);
         return scale;
@@ -800,12 +811,12 @@ class Scale {
      
      */
     
-    static deque<Note> augmented(Note note){
+    static deque<NotePtr> augmented(NotePtr note){
         
         
-        deque<Note> scale;
+        deque<NotePtr> scale;
         scale.push_back(note);
-        Note n = Interval::minorThird(note);
+        NotePtr n = Interval::minorThird(note);
         scale.push_back(n);
         n = Interval::majorThird(note);
         scale.push_back(n);
@@ -819,10 +830,10 @@ class Scale {
         return scale;
     }
     
-    static Scale getAugmented(Note note){
-        Scale scale;
-        scale.name = "augmented";
-        scale.notes = Scale::augmented(note);
+    static shared_ptr<Scale> getAugmented(NotePtr note){
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "augmented";
+        scale->notes = Scale::augmented(note);
         return scale;
     }
     
@@ -833,8 +844,8 @@ class Scale {
          /*
           Helper functions
           */
-    static deque<Note> offset(deque<Note> orgscale,int amount){
-            deque<Note> scale;
+    static deque<NotePtr> offset(deque<NotePtr> orgscale,int amount){
+            deque<NotePtr> scale;
         
             //first inset top ones
             scale.insert(scale.begin(), orgscale.begin(),orgscale.begin()+amount);
@@ -848,20 +859,20 @@ class Scale {
             return scale;
     }
     
-    static void changeOctave(deque<Note> &_notes, int diff){
+    static void changeOctave(deque<NotePtr> &_notes, int diff){
         for(int i=0;i<_notes.size();i++){
-            _notes[i].changeOctave(diff);
+            _notes[i]->changeOctave(diff);
         }
     }
     
     void changeOctave(int diff){
         for(int i=0;i<notes.size();i++){
-            notes[i].changeOctave(diff);
+            notes[i]->changeOctave(diff);
         }
     }
     
     void setOctave(int oct){
-        int diff = oct-notes[0].octave;
+        int diff = oct-notes[0]->octave;
         changeOctave(diff);
     }
     
@@ -887,7 +898,7 @@ class Scale {
     
     
     
-    Note getFirst(){
+    NotePtr getFirst(){
         if(notes.size()>0){
             return notes[0];
         }else{
@@ -895,7 +906,7 @@ class Scale {
         }
     }
     
-    Note getLast(){
+    NotePtr getLast(){
         if(notes.size()>0){
             return notes[notes.size()-1];
         }else{
@@ -903,7 +914,7 @@ class Scale {
         }
     }
     
-    Note getNote(int i){
+    NotePtr getNotePtr(int i){
         if(notes.size()>0){
             int oct = 0;
             if(i<0){
@@ -915,13 +926,12 @@ class Scale {
             }
             
             
-            Note n = notes[i];
-            
-            n.changeOctave(oct);
+            NotePtr n = notes[i];
+            n->changeOctave(oct);
             return n;
             
         }else{
-            ofLog()<<"Scale::getNote has no notes"<<endl;
+            ofLog()<<"Scale::getNotePtr has no notes"<<endl;
         }
     }
              
@@ -935,7 +945,7 @@ class Scale {
          */
              /*
               
-        static string determine(deque<Note> scale){
+        static string determine(deque<NotePtr> scale){
          
          
          possible_result = [
@@ -1014,35 +1024,35 @@ class Scale {
     }
     
     
-    static vector<Scale> getScalesForChord(Chord chord){
+    static vector<shared_ptr<Scale>> getScalesForChord(ChordPtr chord){
         
-        vector<Scale> scalesInKey;
+        vector<shared_ptr<Scale>> scalesInKey;
         
         Lookup m = ChordScaleLookup;
-        string str = m[chord.getChordSymbol()];
+        string str = m[chord->getChordSymbol()];
         
         
         
         if(str==""){
-            cout<<"getScalesForChord found nothing in ChordScaleLookup for "<<chord.getChordSymbol()<<endl;
+            cout<<"getScalesForChord found nothing in ChordScaleLookup for "<<chord->getChordSymbol()<<endl;
             return scalesInKey;
         }
         vector<string> scales = ofSplitString(str,",");//scales that go with this symbol
         //how to consider bass and poly...baah..
         
-        Scale s;
+        shared_ptr<Scale> s;
         for(int i=0;i<scales.size();i++){
-            s = Scale::getScaleFromString(scales[i],chord.getRoot());
+            s = Scale::getScaleFromString(scales[i],chord->getRoot());
             scalesInKey.push_back(s);
         }
         return scalesInKey;
     }
     
-    static Scale getScaleFromString(string scaleName, Note n){
+    static shared_ptr<Scale> getScaleFromString(string scaleName, NotePtr n){
         ScaleFunctionLookup lookup = generateLookup();
         
         
-        Scale s;
+        shared_ptr<Scale> s;
         if(lookup[scaleName]){
             s = (*lookup[scaleName])(n);
         }else{
@@ -1058,6 +1068,21 @@ class Scale {
     //convenience
     
     static void print(deque<Note> notes){
+        
+        
+        cout <<"[ ";
+        for(int i = 0;i<notes.size();i++){
+            cout<<notes[i];
+            if(i<notes.size()-1){
+                cout<<", ";
+            }
+        }
+        cout<<" ]"<<endl;
+    }
+    
+    
+    
+    static void print(deque<NotePtr> notes){
         
         
         cout <<"[ ";
@@ -1092,7 +1117,7 @@ class Scale {
 	
     //give access to private parts
     friend ostream& operator<<(ostream& os, const Scale& s);
-    
+    friend ostream& operator<<(ostream& os, const shared_ptr<Scale>& s);
     
     
 private:
@@ -1137,23 +1162,36 @@ private:
     
 };
     
-    
-    
-    
-    //this overloads the cout stream with useful output data
-    //corresponding friend function above, note: inside class
-    inline ostream& operator<<(ostream& os, Scale& s){
-        os <<"Scale "<<s.notes[0].getDiatonicName()<<" "<<s.name<<" [ ";
-        for(int i=0;i<s.notes.size();i++){
-            os<<s.notes[i];
-            if(i<s.notes.size()-1){
-                os<<", ";
-            }
+
+typedef shared_ptr<Scale> ScalePtr;
+
+//this overloads the cout stream with useful output data
+//corresponding friend function above, note: inside class
+inline ostream& operator<<(ostream& os, Scale& s){
+    os <<"Scale "<<s.notes[0]->getDiatonicName()<<" "<<s.name<<" [ ";
+    for(int i=0;i<s.notes.size();i++){
+        os<<s.notes[i];
+        if(i<s.notes.size()-1){
+            os<<", ";
         }
-        os<<" ]"<<endl;
-        return os;
     }
-        
+    os<<" ]"<<endl;
+    return os;
+}
+
+inline ostream& operator<<(ostream& os, ScalePtr& s){
+    os <<"Scale "<<s->notes[0]->getDiatonicName()<<" "<<s->name<<" [ ";
+    for(int i=0;i<s->notes.size();i++){
+        os<<s->notes[i];
+        if(i<s->notes.size()-1){
+            os<<", ";
+        }
+    }
+    os<<" ]"<<endl;
+    return os;
+}
+    
+
 
 };//namespace
 #endif

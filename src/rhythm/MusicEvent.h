@@ -44,7 +44,7 @@ public:
     static ofEvent <MusicEvent> BEAT;
     static ofEvent <MusicEvent> TEMPO_CHANGE;
     
-    //timer spoecific
+    //timer specific
     static ofEvent <MusicEvent> TIMER_TICK;
     static ofEvent <MusicEvent> TIMER_BEAT;
     

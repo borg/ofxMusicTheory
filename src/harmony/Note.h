@@ -11,12 +11,14 @@
 #define _Note
 
 #include "ofMain.h"
-#include "Utils.h"
+//#include "Utils.h"
 #include "Constants.h"
-#include "NoteTime.h"
+//#include "MusicalTime.h"
 #include <map>
 
 namespace MusicTheory{
+    
+    
     
     
 typedef struct Dynamics{
@@ -201,9 +203,11 @@ class Note {
             }
         }
 	}
-    Note getAugmented(int i=1){
-        Note n = *this;
-        n.augment();
+    
+    //TODO:Why argument not used here?!
+    shared_ptr<Note> getAugmented(int i=1){
+        shared_ptr<Note> n = copy();
+        n->augment();
         return n;
     }
     
@@ -225,9 +229,10 @@ class Note {
         }
  
     }
-    Note getDiminished(int i=1){
-        Note n = *this;
-        n.diminish();
+    shared_ptr<Note> getDiminished(int i=1){
+        //NotePtr n = *this;
+        shared_ptr<Note> n = shared_ptr<Note>(new Note(*this));
+        n->diminish();
         return n;
     }
     
@@ -240,9 +245,9 @@ class Note {
     /*
      Returns a natural copy
      */
-    Note getNatural(){
-        Note n = *this;
-        n.naturalise();
+    shared_ptr<Note> getNatural(){
+        shared_ptr<Note> n = shared_ptr<Note>(new Note(*this));
+        n->naturalise();
         return n;
     }
 
@@ -266,9 +271,9 @@ class Note {
         changeOctave(1);
     }
     
-    Note getOctaveUp(){
-        Note n = *this;//copy
-        n.changeOctave(1);
+    shared_ptr<Note> getOctaveUp(){
+        shared_ptr<Note> n = copy();
+        n->changeOctave(1);
         return n;
     }
     
@@ -276,9 +281,9 @@ class Note {
         changeOctave(-1);
     }
 
-    Note getOctaveDown(){
-        Note n = *this;//copy
-        n.changeOctave(-1);
+    shared_ptr<Note> getOctaveDown(){
+        shared_ptr<Note> n = copy();
+        n->changeOctave(-1);
         return n;
     }
     
@@ -319,9 +324,9 @@ class Note {
     }
     
     
-    Note getTransposed(int interval){
-        Note n = *this;//copy
-        n.transpose(interval);
+    shared_ptr<Note> getTransposed(int interval){
+        shared_ptr<Note> n = copy();
+        n->transpose(interval);
         return n;
     }
     /*
@@ -374,15 +379,15 @@ class Note {
     }
 
     
-    static Note fromInt(int val){
+    static shared_ptr<Note> fromInt(int val){
        
         int relVal = val % 12;
         int oct = floor(val/12);
         
         string n[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
         
-        Note note(n[relVal]);
-        note.setOctave(oct);
+        shared_ptr<Note> note = shared_ptr<Note>(new Note(n[relVal]));
+        note->setOctave(oct);
         return note;
         
     }
@@ -572,7 +577,25 @@ class Note {
         return -1;
     }
 
-    
+    static int getNoteId(deque<shared_ptr<Note> > list, shared_ptr<Note> n , bool strict=false){
+        
+        for(int i=0;i<list.size();i++){
+            if(n->name==list[i]->name){
+                return i;
+            }
+        }
+        
+        return -1;
+    }
+
+    //factory methods
+    shared_ptr<Note> copy(){
+        return shared_ptr<Note>(new Note(*this));//copy
+    }
+
+    static shared_ptr<Note> create(string _name = "C",int _oct=4,Dynamics _dyn=Dynamics()){
+        return shared_ptr<Note>(new Note(_name,_oct,_dyn));//new
+    }
     
     //http://stackoverflow.com/questions/6039567/const-member-function
     static bool compare(const Note& a, const Note& b) {
@@ -580,8 +603,14 @@ class Note {
         return (a.toInt() < b.toInt());
     }
     
+    static bool comparePtr(const shared_ptr<Note> &a,const shared_ptr<Note> & b) {
+        return (a->toInt() < b->toInt());
+    }
+    
     //give access to private parts
     friend ostream& operator<<(ostream& os, const Note& n);
+    
+    friend ostream& operator<<(ostream& os, const shared_ptr<Note> &n);
     
 };//class
 
@@ -591,7 +620,7 @@ class Note {
     
     
     
-    
+typedef shared_ptr<Note> NotePtr;
     
     
         
@@ -599,6 +628,12 @@ class Note {
 //corresponding friend function above, note: inside class
 inline ostream& operator<<(ostream& os, Note& n){
      os <<"Note "<< n.getShorthand()<<" ("<<n.name<<"-"<<n.toInt()<<")";
+    //os <<"Note "<< n.getShorthand() << " (vel: " << n.dynamics.velocity<<")";
+    return os;
+}
+
+inline ostream& operator<<(ostream& os, NotePtr& n){
+     os <<"Note "<< n->getShorthand()<<" ("<<n->name<<"-"<<n->toInt()<<")";
     //os <<"Note "<< n.getShorthand() << " (vel: " << n.dynamics.velocity<<")";
     return os;
 }

@@ -17,17 +17,13 @@
 #define _ofxMusicTheory
 
 #include "ofMain.h"
-#include "MusicEvent.h"
 #include "Note.h"
 #include "Interval.h"
 #include "Chord.h"
 #include "Diatonic.h"
 #include "Scale.h"
 #include "Progression.h"
-#include "Playable.h"
-#include "Composition.h"
-#include "MelodyGenerator.h"
-#include "Transport.h"
+#include "Bar.h"
 
 namespace MusicTheory{
 
@@ -35,6 +31,15 @@ class ofxMusicTheory {
 	
 };
     
+
+
+
+
+
+
+
+
+
     
 }
 

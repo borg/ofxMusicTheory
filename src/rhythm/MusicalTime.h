@@ -7,10 +7,13 @@
  
  *  This will probably change to be compatible with guido
  *
+ 
+ 
+
  */
 
-#ifndef _NoteTime
-#define _NoteTime
+#ifndef _MusicalTime
+#define _MusicalTime
 
 #include "ofMain.h"
 #include "Constants.h"
@@ -84,7 +87,7 @@ namespace MusicTheory{
     const BeatDurationLookup BEAT_LENGTHS(bb, bb + sizeof bb / sizeof bb[0]);
         */
         
-class NoteTime {
+class MusicalTime {
 	
   public:
     
@@ -132,11 +135,11 @@ class NoteTime {
      The rest note vale after the beat and how much of that
      Same for duration
      
-     Eg a dotted eigth at 2.5 is NoteTime(2, NOTE_4,0.5,NOTE_8,1.5);
+     Eg a dotted eigth at 2.5 is MusicalTime(2, NOTE_4,0.5,NOTE_8,1.5);
      
      */
     
-     NoteTime(int _beat =1 ,double _duration = NOTE_4,double _delay = 0){
+     MusicalTime(int _beat =1 ,double _duration = NOTE_4,double _delay = 0){
         set(_beat,_duration,_delay);
     }
     
@@ -183,5 +186,11 @@ class NoteTime {
     
 	
 };
+
+typedef shared_ptr<MusicalTime>MusicalTimePtr;
+
+
 };
+
+
 #endif

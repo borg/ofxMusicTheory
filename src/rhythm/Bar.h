@@ -12,43 +12,48 @@
 
 #include "ofMain.h"
 #include "Chord.h"
-#include "MusicEvent.h"
-#include "NoteTime.h"
+#include "MusicalTime.h"
 
 namespace MusicTheory{
-    
-    
-    typedef struct BarEvent{
-        Chord chord;
-        Note note;
-        NoteTime time;
-    }BarEvent;
-    
+
+
+class BarEvent{
+    public:
+    BarEvent(){};
+    BarEvent(ChordPtr c, MusicalTimePtr t){
+        chords.push_back(c);
+        time = t;
+    };
+    BarEvent(NotePtr n, MusicalTimePtr t){
+        notes.push_back(n);
+        time = t;
+    };
+
+    vector<ChordPtr> chords;
+    vector<NotePtr> notes;
+    MusicalTimePtr time;
+};
+
+typedef shared_ptr<BarEvent> BarEventPtr;
+
 class Bar {
   public:
-    int beats;//eg 4
-    int denominator;//eg 4 to create a 4/4 time signature
-    float duration;
+    int numerator = 4;//eg 4
+    int denominator = 4;//eg 4 to create a 4/4 time signature
+    float duration = 2000;
 
-    int currBeat;
+    int currBeat=1;
 
-	Bar(){
-        beats = 4;
-        denominator = 4;
-        currBeat = 1;
-       // beginTime = 0;
-        duration = 2000;//for 120bpm 4/4
-
-    };
+	Bar(){};
     
-    void setTimeSignature(int _beats, int _denominator){
-        beats = _beats;
+    void setTimeSignature(int _numerator, int _denominator){
+        numerator = _numerator;
         denominator = _denominator;
     }
     
     
-    int getBeats(){
-        return beats;
+    int getNumerator(){
+        return numerator;
     }
     int getDenominator(){
         return denominator;
@@ -58,51 +63,33 @@ class Bar {
         return duration;
     }
     
-    vector<BarEvent> chords;
-    vector<BarEvent> notes;
+    vector<BarEventPtr> events;
+
     
-    void addChord(Chord c, NoteTime t){
-        BarEvent b;
-        b.chord =c;
-        b.time = t;
-        chords.push_back(b);
+    
+    void addBarEvents(vector<BarEventPtr>&arr){
+        events.insert(events.end(), arr.begin(),arr.end());
+    }
+    
+    void addChord(ChordPtr c, MusicalTimePtr t){
+        BarEventPtr b = BarEventPtr(new BarEvent());
+        b->chords.push_back(c);
+        b->time = t;
+        events.push_back(b);
     
     };
     
-    void addNote(Note n, NoteTime t){
-        BarEvent b;
-        b.note = n;
-        b.time = t;
-        notes.push_back(b);
+    void addNote(NotePtr n, MusicalTimePtr t){
+        BarEventPtr b = BarEventPtr(new BarEvent());
+        b->notes.push_back(n);
+        b->time = t;
+        events.push_back(b);
         
     };
 
-    
-    void syncBeat(int b){
-        
-        
-        currBeat = b;
-        if(currBeat == 1){
-            //beginTime = ofGetElapsedTimeMillis();
-        }
-        cout<<"Bar got beat "<<b<<endl;
-        cout<<"________________________"<<endl;
-    }
-    
-    void update(){
-        
-              
-
-    
-    }
-    
-    
-    /*
-     Resets all events on loop
-     */
-    void reset(){
-    }
-	
+ 
 };
+
+typedef shared_ptr<Bar> BarPtr;
 };
 #endif
