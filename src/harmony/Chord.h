@@ -1089,7 +1089,7 @@ class Chord {
      */
     
     static shared_ptr<Chord> suspendedSecondTriad(NotePtr note){
-        shared_ptr<Chord> chord;
+        shared_ptr<Chord> chord = Chord::create();
         chord->name = "sus2";
         chord->setRoot(note);
         chord->notes.push_back(note);
@@ -1110,7 +1110,7 @@ class Chord {
      */
     
     static shared_ptr<Chord> suspendedFourthTriad(NotePtr note){
-        shared_ptr<Chord> chord;
+        shared_ptr<Chord> chord = Chord::create();
         chord->name = "sus4";
         chord->setRoot(note);
         chord->notes.push_back(note);
