@@ -188,7 +188,9 @@ class Scale : public enable_shared_from_this<Scale> {
      ["C", "D", "E", "F", "G", "A", "B"]
      */
     static deque<NotePtr> diatonic(NotePtr note){
-	    return Diatonic::getNotes(note->copy());
+        deque<NotePtr>nts = Diatonic::getNotes(note->copy());
+        Scale::setOctave(nts,note->getAbsoluteOctave());
+        return nts;
     }
     static shared_ptr<Scale> getDiatonic(NotePtr note){
         shared_ptr<Scale> scale = Scale::create();
@@ -226,11 +228,11 @@ class Scale : public enable_shared_from_this<Scale> {
      */
     
     static deque<NotePtr> dorian(NotePtr note){
-
         deque<NotePtr> ionian = Scale::ionian(Interval::minorSeventh(note->copy()));
-        
+        ionian = Scale::offset(ionian,1);
+        Scale::setOctave(ionian,note->getAbsoluteOctave());
         //all other diatonic scale are created from the ionian
-        return Scale::offset(ionian,1);
+        return ionian;
     }
     
     static shared_ptr<Scale> getDorian(NotePtr note){
@@ -249,9 +251,10 @@ class Scale : public enable_shared_from_this<Scale> {
      */
     static deque<NotePtr> phrygian(NotePtr note){
         deque<NotePtr> ionian = Scale::ionian(Interval::minorSixth(note->copy()));
-    
         //all other diatonic scale are created from the ionian
-        return Scale::offset(ionian,2);
+        ionian = Scale::offset(ionian,2);
+        Scale::setOctave(ionian,note->getAbsoluteOctave());
+        return ionian;
     }
     
     static shared_ptr<Scale> getPhrygian(NotePtr note){
@@ -274,9 +277,9 @@ class Scale : public enable_shared_from_this<Scale> {
     
     static deque<NotePtr> lydian(NotePtr note){
         deque<NotePtr> ionian = Scale::ionian(Interval::perfectFifth(note->copy()));
-        
-        //all other diatonic scale are created from the ionian
-        return offset(ionian,3);
+        ionian = offset(ionian,3);
+        Scale::setOctave(ionian,note->getAbsoluteOctave());
+        return ionian;
     }
     
     static shared_ptr<Scale> getLydian(NotePtr note){
@@ -294,10 +297,11 @@ class Scale : public enable_shared_from_this<Scale> {
      ["G", "A", "B", "C", "D", "E", "F"]
      */
     static deque<NotePtr> mixolydian(NotePtr note){
-        
         deque<NotePtr> ionian = Scale::ionian(Interval::perfectFourth(note->copy()));
         //all other diatonic scale are created from the ionian
-        return Scale::offset(ionian,4);
+        ionian = offset(ionian,4);
+        Scale::setOctave(ionian,note->getAbsoluteOctave());
+        return ionian;
     }
     
     
@@ -323,7 +327,9 @@ class Scale : public enable_shared_from_this<Scale> {
     static deque<NotePtr> aeolian(NotePtr note){
         deque<NotePtr> ionian = Scale::ionian(Interval::minorThird(note->copy()));
         //all other diatonic scale are created from the ionian
-        return Scale::offset(ionian,5);
+        ionian = offset(ionian,5);
+        Scale::setOctave(ionian,note->getAbsoluteOctave());
+        return ionian;
     }
     
     static shared_ptr<Scale> getAeolian(NotePtr note){
@@ -343,7 +349,9 @@ class Scale : public enable_shared_from_this<Scale> {
     static deque<NotePtr> locrian(NotePtr note){
         deque<NotePtr> ionian = Scale::ionian(Interval::minorSecond(note->copy()));
         //all other diatonic scale are created from the ionian
-        return Scale::offset(ionian,6);
+        ionian = offset(ionian,6);
+        Scale::setOctave(ionian,note->getAbsoluteOctave());
+        return ionian;
     }
     
     static shared_ptr<Scale> getLocrian(NotePtr note){
@@ -367,7 +375,9 @@ class Scale : public enable_shared_from_this<Scale> {
      */
     static deque<NotePtr> naturalMinor(NotePtr note){
         deque<NotePtr> scale = Diatonic::getNotes(Interval::minorThird(note->copy()));
-        return Scale::offset(scale,5);
+        scale = Scale::offset(scale,5);
+        Scale::setOctave(scale,note->getAbsoluteOctave());
+        return scale;
     }
     
     static shared_ptr<Scale> getNaturalMinor(NotePtr note){
@@ -411,6 +421,7 @@ class Scale : public enable_shared_from_this<Scale> {
     static deque<NotePtr> melodicMinor(NotePtr note){
         deque<NotePtr> scale = Scale::harmonicMinor(note->copy());
         scale[5]->augment();
+        Scale::setOctave(scale,note->getAbsoluteOctave());
         return scale;
     }
     
@@ -428,6 +439,7 @@ class Scale : public enable_shared_from_this<Scale> {
     static deque<NotePtr> melodicMinorII(NotePtr note){
         deque<NotePtr> scale = Scale::phrygian(note->copy());
         scale[5]->augment();
+        Scale::setOctave(scale,note->getAbsoluteOctave());
         return scale;
     }
     
@@ -451,6 +463,7 @@ class Scale : public enable_shared_from_this<Scale> {
     static deque<NotePtr> melodicMinorIII(NotePtr note){
         deque<NotePtr> scale = Scale::lydian(note->copy());
         scale[4]->augment();
+        Scale::setOctave(scale,note->getAbsoluteOctave());
         return scale;
     }
     
@@ -475,6 +488,7 @@ class Scale : public enable_shared_from_this<Scale> {
     static deque<NotePtr> melodicMinorIV(NotePtr note){
         deque<NotePtr> scale = Scale::lydian(note->copy());
         scale[6]->diminish();
+        Scale::setOctave(scale,note->getAbsoluteOctave());
         return scale;
     }
     
@@ -500,6 +514,7 @@ class Scale : public enable_shared_from_this<Scale> {
     static deque<NotePtr> melodicMinorV(NotePtr note){
         deque<NotePtr> scale = Scale::mixolydian(note->copy());
         scale[5]->diminish();
+        Scale::setOctave(scale,note->getAbsoluteOctave());
         return scale;
     }
     
@@ -523,6 +538,7 @@ class Scale : public enable_shared_from_this<Scale> {
     static deque<NotePtr> melodicMinorVI(NotePtr note){
         deque<NotePtr> scale = Scale::locrian(note->copy());
         scale[1]->augment();
+        Scale::setOctave(scale,note->getAbsoluteOctave());
         return scale;
     }
     
@@ -550,6 +566,7 @@ class Scale : public enable_shared_from_this<Scale> {
     static deque<NotePtr> melodicMinorVII(NotePtr note){
         deque<NotePtr> scale = Scale::locrian(note->copy());
         scale[3]->diminish();
+        Scale::setOctave(scale,note->getAbsoluteOctave());
         return scale;
     }
     
@@ -577,6 +594,7 @@ class Scale : public enable_shared_from_this<Scale> {
         deque<NotePtr> scale = Scale::ionian(note->copy());
         scale[2]->diminish();
         scale[3]->augment();
+        Scale::setOctave(scale,note->getAbsoluteOctave());
         return scale;
     }
     
@@ -595,6 +613,7 @@ class Scale : public enable_shared_from_this<Scale> {
         scale.push_back(Interval::perfectFourth(note->copy()));
         scale.push_back(Interval::perfectFifth(note->copy()));
         scale.push_back(Interval::minorSeventh(note->copy()));
+        Scale::setOctave(scale,note->getAbsoluteOctave());
         return scale;
     }
     
@@ -614,6 +633,7 @@ class Scale : public enable_shared_from_this<Scale> {
         scale.push_back(Interval::majorThird(note->copy()));
         scale.push_back(Interval::perfectFifth(note->copy()));
         scale.push_back(Interval::majorSixth(note->copy()));
+        Scale::setOctave(scale,note->getAbsoluteOctave());
         return scale;
     }
     
@@ -631,6 +651,7 @@ class Scale : public enable_shared_from_this<Scale> {
         scale.push_back(Interval::majorThird(note->copy()));
         scale.push_back(Interval::perfectFifth(note->copy()));
         scale.push_back(Interval::minorSeventh(note->copy()));
+        Scale::setOctave(scale,note->getAbsoluteOctave());
         return scale;
     }
     
@@ -669,6 +690,7 @@ class Scale : public enable_shared_from_this<Scale> {
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "pentatonicMinorII";
         scale->notes = Scale::pentatonicMinorII(note);
+        scale->setOctave(note->getAbsoluteOctave());
         return scale;
     }
     
@@ -942,10 +964,13 @@ class Scale : public enable_shared_from_this<Scale> {
      */
      static deque<NotePtr> wholeNote(NotePtr note){
          deque<NotePtr> scale;
+         
          scale.push_back(note->copy());
+         
+         NotePtr nCopy = note->copy();
          for(int i =0;i<5;i++){
-             note = Interval::majorSecond(note->copy());
-             scale.push_back(note->copy());
+             nCopy = Interval::majorSecond(nCopy->copy());
+             scale.push_back(nCopy->copy());
          }
          return scale;
     }
@@ -1010,8 +1035,6 @@ class Scale : public enable_shared_from_this<Scale> {
      */
     
     static deque<NotePtr> augmented(NotePtr note){
-        
-        
         deque<NotePtr> scale;
         scale.push_back(note->copy());
         NotePtr n = Interval::minorThird(note->copy());
@@ -1039,24 +1062,58 @@ class Scale : public enable_shared_from_this<Scale> {
     
     
              
-         /*
-          Helper functions
-          */
+     /*
+      Helper functions
+      */
     static deque<NotePtr> offset(deque<NotePtr> orgscale,int amount){
-            deque<NotePtr> scale;
-        
-            //first inset top ones
-            scale.insert(scale.begin(), orgscale.begin(),orgscale.begin()+amount);
-            
-            //octave up
-            Scale::changeOctave(scale,1);
-        
-            //then add the lower
-            scale.insert(scale.begin(), orgscale.begin()+amount,orgscale.end());
-       
-            return scale;
+        if(!(orgscale.size()>amount)){
+            ofLogWarning()<<__FUNCTION__<<" not enough notes"<<endl;
+            return orgscale;
+        }
+        deque<NotePtr> scale;
+        deque<NotePtr> copyScale;
+    
+        for(NotePtr note:orgscale){
+            copyScale.push_back(note->copy());
+        }
+    
+        sort(copyScale.begin(),copyScale.end(),Note::comparePtr);
+        scale.insert(scale.begin(), copyScale.begin()+amount,copyScale.end());
+
+        //now in next octave
+        for(int i=0;i<amount;i++){
+            copyScale[i]->changeOctave(1);
+            scale.push_back(copyScale[i]);
+        }
+        return scale;
     }
     
+
+    
+    static void setOctave(deque<NotePtr> nts, int oct){
+        if(nts.size()){
+            int firstNoteOct = nts[0]->getAbsoluteOctave();
+            int diff = oct - firstNoteOct;
+            for(NotePtr note:nts){
+                note->changeOctave(diff);
+            }
+        }
+    }
+    
+    void setOctave(int oct){
+        Scale::setOctave(notes,oct);
+    }
+    
+    int getOctave(){
+        if(notes.size()){
+            return notes[0]->getAbsoluteOctave();
+        }else{
+            return 0;
+        }
+    }
+
+
+
     static void changeOctave(deque<NotePtr> &_notes, int diff){
         for(int i=0;i<_notes.size();i++){
             _notes[i]->changeOctave(diff);
@@ -1069,20 +1126,6 @@ class Scale : public enable_shared_from_this<Scale> {
         }
     }
     
-    
-    int getOctave(){
-        if(notes.size()){
-            return notes[0]->octave;
-        }else{
-            return 0;
-        }
-    }
-    
-    
-    void setOctave(int oct){
-        int diff = oct-notes[0]->octave;
-        changeOctave(diff);
-    }
     
 	void octaveUp(){
         changeOctave(1);
@@ -1191,7 +1234,7 @@ class Scale : public enable_shared_from_this<Scale> {
     NotePtr getClosestNote(NotePtr note, bool ifNotInScaleSelectNextHigher = true){
         if(isValid()){
             int startNote = note->getInt();
-            int startOct = note->getOctave();
+            int startOct = note->getAbsoluteOctave();
             
             shared_ptr<Scale> stack = copy();
             stack->setOctave(startOct);
@@ -1228,7 +1271,7 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     bool isValid(){
-        return notes.size()>0;
+        return notes.size()>1;
     }
     
         /*
@@ -1474,26 +1517,30 @@ typedef shared_ptr<Scale> ScalePtr;
 //this overloads the cout stream with useful output data
 //corresponding friend function above, note: inside class
 inline ostream& operator<<(ostream& os, Scale& s){
-    os <<"Scale "<<s.notes[0]->getDiatonicName()<<" "<<s.name<<" [ ";
-    for(int i=0;i<s.notes.size();i++){
-        os<<s.notes[i];
-        if(i<s.notes.size()-1){
-            os<<", ";
+    if(s.size()){
+        os <<"Scale "<<s.notes[0]->getShorthand()<<" "<<s.name<<" [ ";
+        for(int i=0;i<s.notes.size();i++){
+            os<<s.notes[i];
+            if(i<s.notes.size()-1){
+                os<<", ";
+            }
         }
+        os<<" ]"<<endl;
     }
-    os<<" ]"<<endl;
     return os;
 }
 
 inline ostream& operator<<(ostream& os, ScalePtr& s){
-    os <<"Scale "<<s->notes[0]->getDiatonicName()<<" "<<s->name<<" [ ";
-    for(int i=0;i<s->notes.size();i++){
-        os<<s->notes[i];
-        if(i<s->notes.size()-1){
-            os<<", ";
+    if(s->size()){
+        os <<"Scale "<<s->notes[0]->getShorthand()<<" "<<s->name<<" [ ";
+        for(int i=0;i<s->notes.size();i++){
+            os<<s->notes[i];
+            if(i<s->notes.size()-1){
+                os<<", ";
+            }
         }
+        os<<" ]"<<endl;
     }
-    os<<" ]"<<endl;
     return os;
 }
     

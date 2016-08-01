@@ -440,7 +440,6 @@ class Note : public enable_shared_from_this<Note>{
      Not done.
      */
 	float toHertz(int standardPitch = 440){
-    
         float diff = toInt() - 57.0;
         return pow(2,(diff / 12.0)) * 440;
     }
@@ -465,8 +464,19 @@ class Note : public enable_shared_from_this<Note>{
      
      */
     string getShorthand(){
-        string str = getDiatonicName()+"-"+ofToString(octave);
+        
+        int adjustedOct = floor(getInt()/12)-2;
+        string str = getDiatonicName()+"-"+ofToString(getAbsoluteOctave());
         return str;
+    }
+    
+    /*
+    getDiatonicName will return C for B#, which is in next octave from B#
+    hence, should take octave from int intead
+    */
+    int getAbsoluteOctave(){
+        int diatonicOct = floor(getInt()/12)-2;
+        return diatonicOct;
     }
     
     string getName(){
@@ -655,12 +665,14 @@ typedef NotePtr N;//short enough?
 //this overloads the cout stream with useful output data
 //corresponding friend function above, note: inside class
 inline ostream& operator<<(ostream& os, Note& n){
+    //name contains accidentals info getDiatonicName() doesn't
      os <<"Note "<< n.getShorthand()<<" ("<<n.name<<"-"<<n.getInt()<<")";
     //os <<"Note "<< n.getShorthand() << " (vel: " << n.dynamics.velocity<<")";
     return os;
 }
 
 inline ostream& operator<<(ostream& os, NotePtr& n){
+    //name contains accidentals info getDiatonicName() doesn't
      os <<"Note "<< n->getShorthand()<<" ("<<n->name<<"-"<<n->getInt()<<")";
     //os <<"Note "<< n.getShorthand() << " (vel: " << n.dynamics.velocity<<")";
     return os;

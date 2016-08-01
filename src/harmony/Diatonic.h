@@ -76,17 +76,13 @@ class Diatonic {
             //since now shared ptrs need to return copies, else modifies map on use
             
             deque<NotePtr> copyDeque;
-            for(NotePtr n:_keyCache[key->name+ofToString(key->octave)]){
+            for(NotePtr n:_keyCache[key->name+ofToString(key->getOctave())]){
                 copyDeque.push_back(n->copy());
             }
             
             return copyDeque;
         }
         
-        /*
-	if not (notes.is_valid_note(key)):
-    raise NoteFormatError, "Unrecognised format for key '%s'" % key
-    */
         
         
         //root note
@@ -102,67 +98,64 @@ class Diatonic {
         
        
         
-       deque<NotePtr> result;
-       // =keyCache[key.name];
+        deque<NotePtr> result;
         string keyAccidentals = key->name.substr(1);
         
         if(fifthIndex != 0){
-           // cout<<"NOT FIFTH"<<endl;
-       
-            //add 
+            //not fifths
+            //add
             string startNote = fifthArr[(fifthIndex - 1) % 7] + keyAccidentals;
-            NotePtr note = NotePtr(new Note(startNote,key->octave));
+            NotePtr note = Note::create(startNote,key->getOctave());
             result.push_back(note);
         
             for (int x=fifthIndex; x< fifthArr.size();x++){
-                NotePtr note = NotePtr(new Note(fifthArr[x]  +  keyAccidentals,key->octave));
+                NotePtr note = Note::create(fifthArr[x]  +  keyAccidentals,key->getOctave());
                 result.push_back(note);
             }
             
             for (int x=0; x< fifthIndex-1;x++){
-                NotePtr note = NotePtr(new Note(fifthArr[x]  + keyAccidentals+ "#",key->octave));
+                NotePtr note = Note::create(fifthArr[x]  + keyAccidentals+ "#",key->getOctave());
                 result.push_back(note);
             }
             
         }else{
-            //cout<<" FIFTH"<<endl;
+            //fifths
             for (int x=0; x< 6;x++){
-                NotePtr note = NotePtr(new Note(fifthArr[x] + keyAccidentals,key->octave));
+                NotePtr note = Note::create(fifthArr[x] + keyAccidentals,key->getOctave());
                 result.push_back(note);
             }
-            NotePtr note = NotePtr(new Note("Bb" + keyAccidentals,key->octave));
+            NotePtr note = Note::create("Bb" + keyAccidentals,key->getOctave());
             result.push_back(note);
         }
         
+        //set all to original octave
+        int orgOct = key->getOctave();
+        
+        for(NotePtr note:result){
+            note->setOctave(orgOct);
+        }
         
         //this sorts all but doesn't start on key
         sort(result.begin(),result.end(),Note::comparePtr);
 
-        
-       // vector<Note>::iterator it = find(result.begin(),result.end(),root);
+        //+1 octave if passed tonic
         int tonic = Note::getNoteId(result,key);
         
-       // cout<<"tonic "<<tonic<<" "<<key<<" "<<result.size()<<endl;
-        
-        
+
         deque<NotePtr> keySorted;
         keySorted.insert(keySorted.begin(),result.begin()+tonic, result.end());
-        
+
         //now in next octave
         for(int i=0;i<tonic;i++){
+            //assuming scales within one octave
             result[i]->changeOctave(1);
             keySorted.push_back(result[i]);
         }
-        
-       // keySorted.insert(keySorted.end(),result.begin(), result.begin()+tonic);
-       
-    
-        //result = result[tonic:] + result[:tonic]
-    
+
         //Save original to cache and return a copy so cache won't be corrupted by
         //modified pointers
         
-        _keyCache[key->name+ofToString(key->octave)] = keySorted;
+        _keyCache[key->name+ofToString(key->getOctave())] = keySorted;
         
         
         deque<NotePtr> copyDeque;
@@ -175,6 +168,33 @@ class Diatonic {
     
     
     
+    static void print(deque<Note> notes){
+        
+        
+        cout <<"[ ";
+        for(int i = 0;i<notes.size();i++){
+            cout<<notes[i];
+            if(i<notes.size()-1){
+                cout<<", ";
+            }
+        }
+        cout<<" ]"<<endl;
+    }
+    
+    
+    
+    static void print(deque<NotePtr> notes){
+        
+        
+        cout <<"[ ";
+        for(int i = 0;i<notes.size();i++){
+            cout<<notes[i];
+            if(i<notes.size()-1){
+                cout<<", ";
+            }
+        }
+        cout<<" ]"<<endl;
+    }
     
     
 		
