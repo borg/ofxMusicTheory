@@ -39,6 +39,7 @@ Change log:
     + Updated to C++11 and cleaned up a lot
     + Fixed plenty of bugs
     + Adapted octaves to Ableton midi register where C-3 = 60 (default before was C-4 = 48)
+    + Added a range of chords and scales
     - Removed orphan code (eg. melody generator).
     - Removed rhythm & time classes. They were never particularly good.
 

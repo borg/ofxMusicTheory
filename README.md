@@ -19,6 +19,7 @@ Change log:
     + Updated to C++11 and cleaned up a lot
     + Fixed plenty of bugs
     + Adapted octaves to Ableton midi register where C-3 = 60 (default before was C-4 = 48)
+    + Added a range of chords and scales
     - Removed orphan code (eg. melody generator).
     - Removed rhythm & time classes. They were never particularly good.
 
@@ -26,10 +27,14 @@ Change log:
 **Example usage:**
 
 ```
-  NotePtr C = Note::create("C");
+
+    NotePtr C = Note::create("C");
     cout<<C<<endl;
     
     NotePtr C2 = Note::fromInt(60);
+    cout<<C2<<endl;
+    
+    C2->transpose(7);
     cout<<C2<<endl;
     
     NotePtr b = C->getAugmented();
@@ -120,13 +125,12 @@ Change log:
     NotePtr M7 = Interval::majorSeventh(root);
     cout<<"Maj seven of "<<root<<" is "<<M7<<endl;
     
-    
+   
     
     string m = Chord::getFullName("mM7");
     
     cout<<Chord::getFullName("mM7")<<" This one not found:" <<Chord::getFullName("oddname")<<endl;
-    //ofLog()<<a->name<<endl;
-    
+  
     
     ChordPtr ch = Chord::halfDiminishedSeventh(root);
     cout<<ch<<endl;;
@@ -259,8 +263,7 @@ Change log:
     for(int i = 0;i<analyse.size();i++){
         cout<<"Opt "<<i<<": "<<analyse[i]<<endl;
     }
-    
-    
+
     
     cout<<endl<<"Scales"<<endl;
     ScalePtr lyd = Scale::getLydian(Note::create("F"));
@@ -277,6 +280,38 @@ Change log:
     
     ScalePtr hirajoshi = Scale::getHirajoshi(Note::create("C"));
     cout<<hirajoshi<<endl;
+    
+    
+    ScalePtr mixo = Scale::getMixolydian(Note::create("C",3));
+    cout<<mixo<<endl;
+    
+    ScalePtr prygian = Scale::getPhrygian(Note::create("C",3));
+    cout<<prygian<<endl;
+
+    
+    ScalePtr flamenco = Scale::getFlamenco(Note::create("E",3));
+    cout<<flamenco<<endl;
+    
+    ScalePtr Zen =  Scale::getInSen(Note::create("C",3));
+    
+    
+    
+    
+    cout<<"Scales for 7b9b5"<<endl;
+    vector<string>scales = Scale::getScalesForChord("7b9b5");
+    Scale::print(scales);
+    
+    
+    NotePtr nn  = Interval::fromShorthand(Note::create("C",4), "b3");
+    cout<<nn<<endl;
+    
+    melMin = Scale::getScaleFromString(scales[0], Note::create("C",4));
+    cout<<melMin<<endl;
+    
+    
+    cout<<"Progressions"<<endl;
+    
+    
     
     
     cout<<"V7 to "<<root<<" is ";
@@ -341,42 +376,16 @@ Change log:
     ChordPtr V7 = Progression::getChordfromChordFunction("V7",root);
     cout<<V7<<endl;
     
-    cout<<root->name<<" ----------------------------"<<endl;
-    
-    ScalePtr mixo = Scale::getMixolydian(Note::create("C",6));
-    cout<<mixo<<endl;
-    
-    ScalePtr prygian = Scale::getPhrygian(Note::create("C",6));
-    cout<<prygian<<endl;
-
-    
-    ScalePtr flamenco = Scale::getFlamenco(Note::create("E",6));
-    cout<<flamenco<<endl;
-    
-    ScalePtr Zen =  Scale::getInSen(Note::create("C",6));
-    
-    cout<<"Scales for 7b9b5"<<endl;
-    vector<string>scales = Scale::getScalesForChord("7b9b5");
-    Scale::print(scales);
-    
-    
-    NotePtr nn  = Interval::fromShorthand(Note::create("C",6), "b3");
-    cout<<nn<<endl;
-    
-    melMin = Scale::getScaleFromString(scales[0], Note::create("C",6));
-    cout<<melMin<<endl;
-    
-
-
 ```
 Output:
 
 ```
 Note C-3 (C-60)
 Note C-3 (C-60)
+Note G-3 (G-67)
 Aug Note C#-3 (C#-61)
 Dim Note C-3 (C-60)
-Dim Note B-3 (Cb-59)
+Dim Note B-2 (Cb-59)
 Note E-2 (C####-52)
 Diatonic name: E
 Oct down: Note E-1 (C####-40)
@@ -389,21 +398,21 @@ Note G-3 (G-67)
 Note A-3 (A-69)
 Note B-3 (B-71)
 Absolute sixth of Note C-3 (C-60) is Note A-3 (A-69)
-Min second of Note C-3 (C-60) is Note C#-5 (C#-85)
-Maj second of Note C-3 (C-60) is Note D-5 (D-86)
-Min third of Note C-3 (C-60) is Note D#-5 (D#-87)
-Maj third of Note C-3 (C-60) is Note E-5 (E-88)
-Min fourth of Note C-3 (C-60) is Note E-5 (E-88)
-Perfect fourth of Note C-3 (C-60) is Note F-5 (F-89)
-Maj fourth of Note C-3 (C-60) is Note F-5 (F-89)
-Min fifth of Note C-3 (C-60) is Note F#-5 (F#-90)
-Perfect fifth of Note C-3 (C-60) is Note G-5 (G-91)
-Min sixth of Note C-3 (C-60) is Note G#-5 (G#-92)
-Maj sixth of Note C-3 (C-60) is Note A-5 (A-93)
-Min seven of Note C-3 (C-60) is Note A#-5 (A#-94)
-Maj seven of Note C-3 (C-60) is Note B-5 (B-95)
+Min second of Note C-3 (C-60) is Note C#-3 (C#-61)
+Maj second of Note C-3 (C-60) is Note D-3 (D-62)
+Min third of Note C-3 (C-60) is Note D#-3 (D#-63)
+Maj third of Note C-3 (C-60) is Note E-3 (E-64)
+Min fourth of Note C-3 (C-60) is Note E-3 (E-64)
+Perfect fourth of Note C-3 (C-60) is Note F-3 (F-65)
+Maj fourth of Note C-3 (C-60) is Note F-3 (F-65)
+Min fifth of Note C-3 (C-60) is Note F#-3 (F#-66)
+Perfect fifth of Note C-3 (C-60) is Note G-3 (G-67)
+Min sixth of Note C-3 (C-60) is Note G#-3 (G#-68)
+Maj sixth of Note C-3 (C-60) is Note A-3 (A-69)
+Min seven of Note C-3 (C-60) is Note A#-3 (A#-70)
+Maj seven of Note C-3 (C-60) is Note B-3 (B-71)
  minor/major seventh This one not found:Chord not found
-Chord Cm7b5 [ Note C-3 (C-60), Note D#-5 (D#-87), Note F#-5 (F#-90), Note A#-5 (A#-94) ]
+Chord Cm7b5 [ Note C-3 (C-60), Note D#-3 (D#-63), Note F#-3 (F#-66), Note A#-3 (A#-70) ]
 
 Subtonic to Note C-3 (C-60) is Chord C7 [ Note C-3 (C-60), Note E-3 (E-64), Note G-3 (G-67), Note B-3 (B-71) ]
 
@@ -411,7 +420,7 @@ Subdominant to Note C-3 (C-60) is Chord F/C [ Note C-3 (C-60), Note F-3 (F-65), 
 
 Subdominant first inversion is Chord F [ Note F-3 (F-65), Note A-3 (A-69), Note C-4 (C-72) ]
 
-Ext fifth eg.Chord CM9 [ Note C-3 (C-60), Note E-5 (E-88), Note G-5 (G-91), Note B-5 (B-95), Note D-6 (D-98) ]
+Ext fifth eg.Chord CM9 [ Note C-3 (C-60), Note E-3 (E-64), Note G-3 (G-67), Note B-3 (B-71), Note D-4 (D-74) ]
 
 Triad analysis 
 [ Note F-3 (F-65), Note G-3 (G-67), Note C-3 (C-60) ]
@@ -449,7 +458,7 @@ Opt 9: Em11|CM9
 Opt 10: G6/9|CM9
 
 Extended  seventh analysis 
-[ Note C-3 (C-60), Note E-5 (E-88), Note G-5 (G-91), Note B-5 (B-95), Note D-6 (D-98), Note F-3 (F-65), Note A-3 (A-69) ]
+[ Note C-3 (C-60), Note E-3 (E-64), Note G-3 (G-67), Note B-3 (B-71), Note D-4 (D-74), Note F-3 (F-65), Note A-3 (A-69) ]
 Opt 0: CM13
 Opt 1: G13
 Opt 2: Dm13
@@ -475,26 +484,38 @@ Opt 21: G13|CM9
 Opt 22: G13|CM11
 
 Polychord analysis
-[ Note C-3 (C-60), Note E-3 (E-64), Note G-3 (G-67), Note F#-3 (F#-66), Note A-5 (A-93), Note C#-6 (C#-97) ]
+[ Note C-3 (C-60), Note E-3 (E-64), Note G-3 (G-67), Note F#-3 (F#-66), Note A-3 (A-69), Note C#-4 (C#-73) ]
 Opt 0: F#m|CM
 Opt 1: A13|CM
 
 Scales
-Scale F lydian [ Note F-6 (F-101), Note G-6 (G-103), Note A-6 (A-105), Note B-6 (B-107), Note C-7 (C-108), Note D-7 (D-110), Note E-7 (E-112) ]
+Scale F-3 lydian [ Note F-3 (F-65), Note G-3 (G-67), Note A-3 (A-69), Note B-3 (B-71), Note C-4 (C-72), Note D-4 (D-74), Note E-4 (E-76) ]
 
-Scale C melodicMinor [ Note C-5 (B#-96), Note D-6 (C##-98), Note D#-6 (D#-99), Note F-6 (E#-101), Note G-6 (F##-103), Note A-6 (G##-105), Note B-6 (A##-107) ]
+Scale C-3 melodicMinor [ Note C-3 (B#-60), Note D-3 (C##-62), Note D#-3 (D#-63), Note F-3 (E#-65), Note G-3 (F##-67), Note A-3 (G##-69), Note B-3 (A##-71) ]
 
-Scale C pentatonicMajor [ Note C-3 (C-60), Note D-5 (D-86), Note E-5 (E-88), Note G-5 (G-91), Note A-5 (A-93) ]
+Scale C-3 pentatonicMajor [ Note C-3 (C-60), Note D-3 (D-62), Note E-3 (E-64), Note G-3 (G-67), Note A-3 (A-69) ]
 
-Scale C hirajoshi [ Note C-3 (C-60), Note C#-5 (C#-85), Note F-5 (F-89), Note G-5 (G-91), Note G#-5 (G#-92) ]
+Scale C-3 hirajoshi [ Note C-3 (C-60), Note C#-3 (C#-61), Note F-3 (F-65), Note G-3 (G-67), Note G#-3 (G#-68) ]
 
+Scale C-3 mixolydian [ Note C-3 (C-60), Note D-3 (D-62), Note E-3 (E-64), Note F-3 (F-65), Note G-3 (G-67), Note A-3 (A-69), Note Bb-3 (Bb-70) ]
+
+Scale C-3 phrygian [ Note C-3 (B#-60), Note C#-3 (C#-61), Note D#-3 (D#-63), Note F-3 (E#-65), Note G-3 (F##-67), Note G#-3 (G#-68), Note A#-3 (A#-70) ]
+
+Scale E-3 flamenco [ Note E-3 (E-64), Note F-3 (F-65), Note G-3 (G-67), Note G#-3 (G#-68), Note A-3 (A-69), Note B-3 (B-71), Note C-4 (C-72), Note D-4 (D-74) ]
+
+Scales for 7b9b5
+[ melodicMinorVII ]
+Note D#-4 (D#-75)
+Scale C-4 melodicMinorVII [ Note C-4 (B#-72), Note C#-4 (C#-73), Note D#-4 (D#-75), Note E-4 (E-76), Note F#-4 (F#-78), Note G#-4 (G#-80), Note A#-4 (A#-82) ]
+
+Progressions
 V7 to Note C-3 (C-60) is Chord G7/D [ Note D-3 (D-62), Note F-3 (F-65), Note G-3 (G-67), Note B-3 (B-71) ]
 
-VIdim7 to Note C-3 (C-60) is Chord Adim7 [ Note A-3 (A-69), Note C-6 (C-96), Note D#-6 (D#-99), Note Gb-6 (Gb-102) ]
+VIdim7 to Note C-3 (C-60) is Chord Adim7 [ Note A-3 (A-69), Note C-4 (C-72), Note D#-4 (D#-75), Note Gb-4 (Gb-78) ]
 
 bIIdim7,VM7 where I is Note C-3 (C-60)
-[ Chord C#dim7 [ Note C#-5 (C#-85), Note E-7 (E-112), Note G-7 (G-115), Note Bb-7 (Bb-118) ]
-, Chord GM7 [ Note G-3 (G-67), Note B-5 (B-95), Note D-6 (D-98), Note F#-6 (F#-102) ]
+[ Chord C#dim7 [ Note C#-3 (C#-61), Note E-3 (E-64), Note G-3 (G-67), Note Bb-3 (Bb-70) ]
+, Chord GM7 [ Note G-3 (G-67), Note B-3 (B-71), Note D-4 (D-74), Note F#-4 (F#-78) ]
  ]
 
 Harmonic substitution of IV7 [ II7, VI7 ]
@@ -510,19 +531,7 @@ Chord C [ Note C-3 (C-60), Note E-3 (E-64), Note G-3 (G-67) ]
 
 Chord D [ Note D-3 (D-62), Note F-3 (F-65), Note A-3 (A-69) ]
 
-Chord Fdim [ Note F-3 (F-65), Note G#-5 (G#-92), Note B-5 (B-95) ]
+Chord Fdim [ Note F-3 (F-65), Note G#-3 (G#-68), Note B-3 (B-71) ]
 
 Chord G7/D [ Note D-3 (D-62), Note F-3 (F-65), Note G-3 (G-67), Note B-3 (B-71) ]
-
-C ----------------------------
-Scale C mixolydian [ Note C-9 (C-132), Note D-9 (D-134), Note E-9 (E-136), Note F-9 (F-137), Note G-9 (G-139), Note A-9 (A-141), Note Bb-9 (Bb-142) ]
-
-Scale C phrygian [ Note C-8 (B#-132), Note C#-9 (C#-133), Note D#-9 (D#-135), Note F-9 (E#-137), Note G-9 (F##-139), Note G#-9 (G#-140), Note A#-9 (A#-142) ]
-
-Scale E flamenco [ Note E-9 (E-136), Note F-9 (F-137), Note G-9 (G-139), Note G#-9 (G#-140), Note A-9 (A-141), Note B-9 (B-143), Note C-10 (C-144), Note D-10 (D-146) ]
-
-Scales for 7b9b5
-[ melodicMinorVII ]
-Note D#-10 (D#-147)
-Scale C melodicMinorVII [ Note C-8 (B#-132), Note C#-9 (C#-133), Note D#-9 (D#-135), Note E-9 (E-136), Note F#-9 (F#-138), Note G#-9 (G#-140), Note A#-9 (A#-142) ]
 ```
