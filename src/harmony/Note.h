@@ -11,18 +11,17 @@
 #define _Note
 
 #include "ofMain.h"
-#include "Utils.h"
-#include "Constants.h"
-#include "NoteTime.h"
 #include <map>
 
 namespace MusicTheory{
     
     
+    
+    
 typedef struct Dynamics{
-    int velocity;
-    int channel;
-    int volume;
+    int velocity = 100;
+    int channel=1;
+    int volume=1;
     
 }Dynamics;
 
@@ -39,42 +38,16 @@ typedef struct Dynamics{
     
 
     
-class Note {
+class Note : public enable_shared_from_this<Note>{
 	
   public:
-   
-    static const float WHOLE;
-    static const float HALF;
-    static const float FOURTH;
-    static const float FOURTH_DOTTED;
-    static const float FOURTH_TRIPLET;
-    static const float FOURTH_QUINTUPLET;
-    static const float FOURTH_SEPTUPLET;
-    
-    static const float EIGHT;
-    static const float EIGHT_DOTTED;
-    //a triplet eighth note is a third of a quarter note.
-    static const float EIGHT_TRIPLET;
-    static const float EIGHT_QUINTUPLET;
-    static const float EIGHT_SEPTUPLET;
-    
-    
-    
-    static const float SIXTEENTH;
-    static const float SIXTEENTH_DOTTED;
-    static const float SIXTEENTH_TRIPLET;
-    static const float SIXTEENTH_QUINTUPLET;
-    static const float SIXTEENTH_SEPTUPLET;
-
   
-    static const float THIRTYSECOND;
-    static const float THIRTYSECOND_DOTTED;
-    static const float THIRTYSECOND_TRIPLET;
-    static const float THIRTYSECOND_QUINTUPLET;
-    static const float THIRTYSECOND_SEPTUPLET;
     
     string name;
-    int octave;
+    //https://forum.ableton.com/viewtopic.php?f=1&t=148636
+    //midi octave ranges are not standardised. I've adjusted to Ableton which begins on -2 = 0
+    //middle C = 60 = C3 on Ableton
+    int octave = 3;
     Dynamics dynamics;
 
     
@@ -82,65 +55,54 @@ class Note {
     
     /*
      Name can be eg. C, C-1, 12
+    [[deprecated("Use Note::create(...)")]]
      */
-	Note(string _name = "C",int _oct=4,Dynamics _dyn=Dynamics()){
+
+	Note(string _name = "C",int _oct=3,Dynamics _dyn=Dynamics()){
         _name = ofToUpper(_name.substr(0,1))+_name.substr(1);
         set(_name, _oct, _dyn);
         
  
     };
     
-    /*
-     //super important
-     //http://en.wikipedia.org/wiki/Copy_constructor
-     
-     
-    Note(Note &note){
-        set(note.name,note.octave, note.dynamics);
-    };
-    */
 
-    
-    void set(string _name = "C",int _oct=4,Dynamics _dyn=Dynamics()){
+
+    void set(string _name = "C",int _oct=3,Dynamics _dyn=Dynamics()){
         if (!isValidNote(name)){
-            ofLog()<< "The string "<<_name<<" is not a valid representation of a note in mingus"<<endl;
+            ofLog()<< "The string "<<_name<<" is not a valid representation of a note"<<endl;
             return;
         }
         
         _name = ofToUpper(_name.substr(0,1))+_name.substr(1);
         
-       // int len = _name.size();
-       // if(len ==1){
-            name = _name;
-            octave = _oct;
-            dynamics = _dyn;
-       // }else if(len==3){
-           // set(_name,_dyn);
-       // }
+        //extract embedded oct eg. D#6
+        if(ofIsStringInString(_name, "#") && _name.size()>2){
+            vector<string> div = ofSplitString(_name,"#");
+            if(isdigit(div[1][0])){
+                _oct = ofToInt(div[1]);
+            }
+        }else if(ofIsStringInString(_name, "b") && _name.size()>2){
+            vector<string> div = ofSplitString(_name,"b");
+            if(isdigit(div[1][0])){
+                _oct = ofToInt(div[1]);
+            }
+        }else if(_name.size()>1){
+            if(isdigit(_name[_name.size()-1])){
+                _oct = ofToInt(_name.substr(1,_name.size()-1));
+            }
+        
+        }
+
+        name = _name;
+        octave = _oct;
+        dynamics = _dyn;
 	}
     
-    
-    /*
-    void set(string _name = "C-1",Dynamics _dyn=Dynamics()){
-        if (!isValidNote(name)){
-            ofLog()<< "The string "<<_name<<" is not a valid representation of a note in mingus"<<endl;
-            return;
-        }
-        
-        int len = _name.size();
-        if(len ==1){
-            ofLog()<< "The string "<<_name<<" lacks octave info"<<endl;
-            return;
-        }else if(len==3){
-            vector<string> str = ofSplitString(_name,"-");
-            set(str[0],ofToInt(str[1]),_dyn);
-        }
-        
-    }*/
+
 
     void set(int note, Dynamics _dyn=Dynamics(),bool absolute = true){
         if (!isValidNote(name)){
-            ofLog()<< "The int "<<note<<" is not a valid representation of a note in mingus"<<endl;
+            ofLog()<< "The int "<<note<<" is not a valid representation of a note"<<endl;
             return;
         }
         
@@ -148,14 +110,14 @@ class Note {
         
         if(absolute){
             name = n[note % 12];
-            octave = note / 12;
+            octave = (note / 12) - 2;
         }else{
             if(note<0 || note>11){
                 ofLog()<<note<<" outside note range 0-11"<<endl;
                 return;
             }else{
                 name = n[note];
-                octave = 4;
+                octave = 3;
             }
             
         }   
@@ -201,9 +163,11 @@ class Note {
             }
         }
 	}
-    Note getAugmented(int i=1){
-        Note n = *this;
-        n.augment();
+    
+    //TODO:Why argument not used here?!
+    shared_ptr<Note> getAugmented(int i=1){
+        shared_ptr<Note> n = copy();
+        n->augment();
         return n;
     }
     
@@ -225,9 +189,10 @@ class Note {
         }
  
     }
-    Note getDiminished(int i=1){
-        Note n = *this;
-        n.diminish();
+    shared_ptr<Note> getDiminished(int i=1){
+        //NotePtr n = *this;
+        shared_ptr<Note> n = shared_ptr<Note>(new Note(*this));
+        n->diminish();
         return n;
     }
     
@@ -240,22 +205,29 @@ class Note {
     /*
      Returns a natural copy
      */
-    Note getNatural(){
-        Note n = *this;
-        n.naturalise();
+    shared_ptr<Note> getNatural(){
+        shared_ptr<Note> n = shared_ptr<Note>(new Note(*this));
+        n->naturalise();
         return n;
     }
 
-    
-	void changeOctave(int diff){
+
+	void changeOctave(int diff, bool limit = false){
         octave += diff;
-        if(octave < 0){
-            octave = 0;
+        
+        if(limit){
+            octave = ofClamp(octave,-2,8);
         }
+        
     }
     
-    void setOctave(int oct){
+    void setOctave(int oct, bool limit = false){
+        //Ableton starts at -2
         octave = oct;
+        
+        if(limit){
+            octave = ofClamp(octave,-2,8);
+        }
     }
     
     int getOctave(){
@@ -266,9 +238,9 @@ class Note {
         changeOctave(1);
     }
     
-    Note getOctaveUp(){
-        Note n = *this;//copy
-        n.changeOctave(1);
+    shared_ptr<Note> getOctaveUp(){
+        shared_ptr<Note> n = copy();
+        n->changeOctave(1);
         return n;
     }
     
@@ -276,9 +248,9 @@ class Note {
         changeOctave(-1);
     }
 
-    Note getOctaveDown(){
-        Note n = *this;//copy
-        n.changeOctave(-1);
+    shared_ptr<Note> getOctaveDown(){
+        shared_ptr<Note> n = copy();
+        n->changeOctave(-1);
         return n;
     }
     
@@ -319,9 +291,9 @@ class Note {
     }
     
     
-    Note getTransposed(int interval){
-        Note n = *this;//copy
-        n.transpose(interval);
+    shared_ptr<Note> getTransposed(int interval){
+        shared_ptr<Note> n = copy();
+        n->transpose(interval);
         return n;
     }
     /*
@@ -360,10 +332,10 @@ class Note {
         int dims = ofStringTimesInString(name, "b");
         
         if(relative){
-           int val = uid+augs-dims;
+            int val = uid+augs-dims;
             return val % 12;
         }else{
-            return octave*12 +uid+augs-dims;
+            return (octave+2)*12 +uid+augs-dims;
         }
         
     }
@@ -372,17 +344,78 @@ class Note {
         return toInt();
         
     }
-
     
-    static Note fromInt(int val){
+
+    //ableton
+    
+    
+    //F5//89 = 8
+    //E5//88 = 7
+    //D#5//87 = 6#
+    //D5//86 = 6
+    //C#5//85 = 5#
+    //C5//84 = 5
+    //B4//83 = 4
+    //A#4//82 = 3#
+    //A4//81 = 3
+    //G#4//80 = 2#
+    //G4//79 = 2
+    //(Gb4//78 = 2b)
+    //F#4//78 = 1#
+    //F4//77 = 1
+    //E4//76 = 0
+    //(Db4//75 = 0b)
+    //D#4//75 = -1#
+    //D4//74 = -1
+    //(Db4//73 = -1b)
+    //C#4//73 = -2#
+    //C4//72 = -2
+    
+    //B3//71 = -3
+    
+    map<int,ofVec2f> midToClef;
+    
+    
+    ofVec2f toTrebleClef(){
+        if(!midToClef.size()){
+            midToClef[11] = ofVec2f(4,0);//B
+            midToClef[10] = ofVec2f(3,1);//A#
+            midToClef[9] = ofVec2f(3,0);//A
+            midToClef[8] = ofVec2f(2,1);//G#
+            midToClef[7] = ofVec2f(2,0);//G
+            midToClef[6] = ofVec2f(1,1);//F#
+            midToClef[5] = ofVec2f(1,0);//F
+            midToClef[4] = ofVec2f(0,0);//E
+            midToClef[3] = ofVec2f(-1,1);//D#
+            midToClef[2] = ofVec2f(-1,0);//D
+            midToClef[1] = ofVec2f(-2,1);//C#
+            midToClef[0] = ofVec2f(-2,0);//C
+        }
+
+        int mid = getInt();
+        int oct = floor(mid/12);
+        int trans = oct-5;//C3 is 5th oct cause it starts on -2
+        int nn = mid%12;
+        ofVec2f line = midToClef[nn];
+        line.x += 7*trans;
+        return line;
+    
+    }
+    
+    //Todo
+    ofVec2f toBassClef(){
+    
+    }
+    
+    static shared_ptr<Note> fromInt(int val){
        
         int relVal = val % 12;
-        int oct = floor(val/12);
+        int oct = floor(val/12)-2;
         
         string n[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
         
-        Note note(n[relVal]);
-        note.setOctave(oct);
+        shared_ptr<Note> note = Note::create(n[relVal]);
+        note->setOctave(oct);
         return note;
         
     }
@@ -556,7 +589,7 @@ class Note {
     }
   
     
-    
+    //Todo
     bool isValidNote(string name){
         return true;
     }
@@ -572,7 +605,25 @@ class Note {
         return -1;
     }
 
-    
+    static int getNoteId(deque<shared_ptr<Note> > list, shared_ptr<Note> n , bool strict=false){
+        
+        for(int i=0;i<list.size();i++){
+            if(n->name==list[i]->name){
+                return i;
+            }
+        }
+        
+        return -1;
+    }
+
+    //factory methods
+    shared_ptr<Note> copy(){
+        return shared_ptr<Note>(new Note(*this));//copy
+    }
+
+    static shared_ptr<Note> create(string _name = "C",int _oct=3,Dynamics _dyn=Dynamics()){
+        return shared_ptr<Note>(new Note(_name,_oct,_dyn));//new
+    }
     
     //http://stackoverflow.com/questions/6039567/const-member-function
     static bool compare(const Note& a, const Note& b) {
@@ -580,8 +631,14 @@ class Note {
         return (a.toInt() < b.toInt());
     }
     
+    static bool comparePtr(const shared_ptr<Note> &a,const shared_ptr<Note> & b) {
+        return (a->toInt() < b->toInt());
+    }
+    
     //give access to private parts
     friend ostream& operator<<(ostream& os, const Note& n);
+    
+    friend ostream& operator<<(ostream& os, const shared_ptr<Note> &n);
     
 };//class
 
@@ -591,14 +648,20 @@ class Note {
     
     
     
+typedef shared_ptr<Note> NotePtr;
     
-    
-    
+typedef NotePtr N;//short enough?
         
 //this overloads the cout stream with useful output data
 //corresponding friend function above, note: inside class
 inline ostream& operator<<(ostream& os, Note& n){
-     os <<"Note "<< n.getShorthand()<<" ("<<n.name<<"-"<<n.toInt()<<")";
+     os <<"Note "<< n.getShorthand()<<" ("<<n.name<<"-"<<n.getInt()<<")";
+    //os <<"Note "<< n.getShorthand() << " (vel: " << n.dynamics.velocity<<")";
+    return os;
+}
+
+inline ostream& operator<<(ostream& os, NotePtr& n){
+     os <<"Note "<< n->getShorthand()<<" ("<<n->name<<"-"<<n->getInt()<<")";
     //os <<"Note "<< n.getShorthand() << " (vel: " << n.dynamics.velocity<<")";
     return os;
 }

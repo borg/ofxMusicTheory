@@ -12,7 +12,7 @@
 
 #include "ofMain.h"
 #include "Chord.h"
-#include "Utils.h"
+
 
 #include "Poco/RegularExpression.h"
 using Poco::RegularExpression;
@@ -21,78 +21,72 @@ namespace MusicTheory{
 
     static string ROMAN[] = {"I","II","III","IV","V","VI","VII"};
     static int numeral_intervals[] = {0, 2, 4, 5, 7, 9, 11};
-    
-    
+
     typedef map<string, int> IntLookup;
     
-    const IntLookup::value_type xx[] = {
-        make_pair("I",0),
-		make_pair("II",1),
-		make_pair("III",2),
-		make_pair("IV",3),
-        make_pair("V",4),
-        make_pair("VI",5),
-        make_pair("VII",6),
+    static IntLookup RomanLookup = {
+        {"I",0},
+        {"II",1},
+        {"III",2},
+        {"IV",3},
+        {"V",4},
+        {"VI",5},
+        {"VII",6},
+    
     };
-        
-    const IntLookup RomanLookup(xx, xx + sizeof xx / sizeof xx[0]);
     
-    
-    
-    
-    typedef Chord (*ChordFunctionPointer)(Note);
+    typedef ChordPtr (*ChordFunctionPointer)(NotePtr);
     typedef map<string,ChordFunctionPointer> ChordFunctionLookup;
-
-    //TODO: Add other b # functions if there are like more subtonic/leadingtone
     
-    const ChordFunctionLookup::value_type f[] ={
-        make_pair("I",&Chord::I),
-        make_pair("I7",&Chord::I7),
-        make_pair("II",&Chord::II),
-        make_pair("II7",&Chord::II7),
-        make_pair("III",&Chord::III),
-        make_pair("III7",&Chord::III7),
-        make_pair("IV",&Chord::IV),
-        make_pair("IV7",&Chord::IV7),
-        make_pair("V",&Chord::V),
-        make_pair("V7",&Chord::V7),
-        make_pair("VI",&Chord::VI),
-        make_pair("VI7",&Chord::VI7),
-        make_pair("bVII",&Chord::bVII),
-        make_pair("VII",&Chord::VII),
-        make_pair("bVII7",&Chord::bVII7),
-        make_pair("VII7",&Chord::VII7)
+    static ChordFunctionLookup ChordFunctions ={
+        {"I", &Chord::I},
+        {"IM7", &Chord::IM7},
+        {"I7", &Chord::I7},
+        {"II", &Chord::II},
+        {"II7", &Chord::II7},
+        {"III", &Chord::III},
+        {"III7", &Chord::III7},
+        {"IV", &Chord::IV},
+        {"IV7", &Chord::IV7},
+        {"V", &Chord::V},
+        {"V7", &Chord::V7},
+        {"VI", &Chord::VI},
+        {"VI7", &Chord::VI7},
+        {"bVII", &Chord::bVII},
+        {"VII", &Chord::VII},
+        {"bVII7", &Chord::bVII7},
+        {"VII7", &Chord::VII7}
     };
-    
-    
-    
-    const ChordFunctionLookup ChordFunctions(f, f + sizeof f / sizeof f[0]);
-    
-       
 
     
     
     
     typedef struct ChordTuple{
-        string roman;//eg. V
+        string roman = "I";//eg. V
         //string bass;
         //string poly;
-        int numeral;//roman converted
-        int accidentals;//eg. # = +1
-        string cleanedAccidentals;//reduced ##b to #
-        string suffix;//eg. dim7
+        int numeral = 0;//roman converted
+        int accidentals = 0;//eg. # = +1
+        string cleanedAccidentals = "";//reduced ##b to #
+        string suffix = "";//eg. dim7
     }ChordTuple;
     
-class Progression {
+class Progression : public enable_shared_from_this<Progression> {
 	
   public:
 	
 	Progression(){};
 	    
     
+    /*
+    static shared_ptr<Progression>create(){
+        return shared_ptr<Progression>(new Progression());
+    }
     
-    
-    
+    shared_ptr<Progression> copy(){
+        return shared_ptr<Progression>(new Progression(*this));//copy
+    }
+    */
     
 
    // numeralInterval = [0, 2, 4, 5, 7, 9, 11]
@@ -112,13 +106,15 @@ class Progression {
      dominanth seventh chord. We have taken the classic route; I7 
      will get you a major seventh chord. If you specifically want a dominanth 
      seventh, use Idom7.
+     
+     Note: This is not followed in my implementation. I'm too jazzy for that.
      */
-    static deque<Chord> fromString(string progression, Note key = Note("C")){
+    static deque<ChordPtr> fromString(string progression, NotePtr key = Note::create("C")){
         vector<string> prog = ofSplitString(progression,",");
     
-        deque<Chord> result;
+        deque<ChordPtr> result;
         
-        Chord chord;
+        ChordPtr chord;
         
         for (int c=0;c<prog.size();c++){
             string chordStr = prog[c];
@@ -130,12 +126,8 @@ class Progression {
     }
 	
     
-    static Chord getChordfromChordFunction(string chordFunction, Note key = Note("C")){
+    static ChordPtr getChordfromChordFunction(string chordFunction, NotePtr key = Note::create("C")){
         //strip preceding accidentals from the string
-        
-        
-      
-        
         vector<string> slash = ofSplitString(chordFunction,"/");
         vector<string> poly = ofSplitString(chordFunction,"| ");
         
@@ -154,27 +146,17 @@ class Progression {
             
         }
         
-        
-        
         ChordTuple tuple = Progression::parse(chordTop);
-        
-        
-        Chord chord;
-        
-        chord = Progression::tupleToChord(tuple,key);
-        
-        
-            
-        if(slash.size()==2){
+        ChordPtr chord = Progression::tupleToChord(tuple,key);
+       
+         if(slash.size()==2){
             ChordTuple bassTuple = Progression::parse(bass);
-            Chord bassNote;
-            bassNote = Progression::tupleToChord(bassTuple,key);
-            chord.setBass(bassNote.notes[0]);
+            ChordPtr bassNote = Progression::tupleToChord(bassTuple,key);
+            chord->setBass(bassNote->notes[0]);
             
         }else if(poly.size()==2){
             ChordTuple polyTuple = Progression::parse(chordBottom);
-            Chord polyChord;
-            polyChord = Progression::tupleToChord(polyTuple,key);
+            ChordPtr polyChord = Progression::tupleToChord(polyTuple,key);
             //I don't know if anything is missing here...for subchord symbols etc
             /*
             Chord subchord;
@@ -183,7 +165,7 @@ class Progression {
             subchord.notes = chord.notes;
             subchord.setRoot(note);*/
             
-            chord.setPolyChord(polyChord);
+            chord->setPolyChord(polyChord);
         }
         
         return chord;
@@ -194,35 +176,27 @@ class Progression {
     /*
      Doesn't work?
      */
-    static vector<string> getFunctionFromChord(Chord chord, Note key = Note("C")){
-        
-        
-        vector<string> prog = Progression::determine(chord.notes,key,true,true,true);//not sure about trues here when only returning one...unnecessary?
-        
-        
+    static vector<string> getFunctionFromChord(ChordPtr chord, NotePtr key = Note::create("C")){
+        vector<string> prog = Progression::determine(chord->notes,key,true,true,true);//not sure about trues here when only returning one...unnecessary?
         return prog;
-        
     }
     
     
     /*
      Cm13 in of G returns IVm13 as the first option...use that by default
      */
-    static vector<string> getFunctionFromChordString(string chordString, Note key = Note("C")){
-        
-        
+    static vector<string> getFunctionFromChordString(string chordString, NotePtr key = Note::create("C")){
         vector<string> prog = Progression::determine(chordString,key,true,false,false);//not sure about trues here when only returning one...unnecessary?
-        
         return prog;
     }
     
-    static Chord tupleToChord(ChordTuple tuple, Note key){
-        Chord chord;
-        Note transKey = key;
+    static ChordPtr tupleToChord(ChordTuple tuple, NotePtr key){
+        ChordPtr chord = Chord::create();
+        NotePtr transKey = key;
         
         
         if(tuple.accidentals!=0){
-            transKey = key.getTransposed(tuple.accidentals);
+            transKey = key->getTransposed(tuple.accidentals);
         }
         
         
@@ -231,12 +205,18 @@ class Progression {
             chord = Progression::getChordFromRoman(tuple.roman, transKey);
         }else{
             chord = Progression::getChordFromRoman(tuple.roman, transKey);
-            chord = Chord::chordFromShorthand(tuple.suffix,chord.notes[0]);//add dim etc
+            if(chord->isValid()){
+                chord = Chord::chordFromShorthand(tuple.suffix,chord->notes[0]);//add dim etc
+            }else{
+                ofLogWarning()<<"Progression:: tupleToChord failed to find chord "<<tuple.roman<<endl;
+            }
         }
         
         //Let the accidentals do their work
          int acc = tuple.accidentals;
         
+        //this seems better for Ableton
+        //chord->setOctave(3);
         //needed?
          //for(int i=0;i<chord.notes.size();i++){
          //  chord.notes[i].transpose(acc);
@@ -258,10 +238,8 @@ class Progression {
     
     static ChordTuple parse(string progression){
         
-
-     
+        ofStringReplace(progression, " ", "");
         string roman_numeral = "";
-
         
         ChordTuple tuple;
         
@@ -277,47 +255,23 @@ class Progression {
         }
         
         
-        //any sharper regex head please improve this
-        int augs = Utils::occurenceNum(acc,"#");
-        int dims = Utils::occurenceNum(acc,"b");
-        
-        
-        /*
-        
-        RegularExpression augEx("[#]*(?=[#biIvV])");//find augmented
-        
-        int augs=0;
-        if(augEx.match(acc, match) != 0) {
-            augs = match.length;
-        }
-        
-        RegularExpression dimEx("[b]*(?=[#biIvV])");//dims
-        
-        int dims=0;
-        if(dimEx.match(acc, match) != 0) {
-            dims = match.length;
-        }
-        cout<<progression<<" augs: "<<augs<<" dims "<<dims<<endl;
-         
-        */
+        int augs = ofStringTimesInString(acc, "#");
+        int dims = ofStringTimesInString(acc, "b");
+
+   
         tuple.accidentals = augs-dims;
         
 
         string roman="";
         roman = progression.substr((augs+dims));//remove accidentals
-        
-        RegularExpression romanEx("(?<!d)[iIvV]*");//find all romans not prefixed by d, thus exclude i in dim..have I missed some?
-        
-        
+      
+        RegularExpression romanEx("(?<!d)[iIvV]*");//find all romans not prefixed by d, thus exclude i in dim..
         
         if(romanEx.match(roman, match) != 0) {
             roman = roman.substr(match.offset,match.length);
         }
         
         tuple.roman = ofToUpper(roman);
-       // cout<<progression<<" tuple.accidentals "<<tuple.accidentals <<" tuple.roman "<<tuple.roman<<endl;
-        
-               
         
         string suffix = progression;
         tuple.suffix = progression.substr(roman.size()+augs+dims);//get suffix if any
@@ -338,14 +292,18 @@ class Progression {
     
 
     
-    static Chord getChordFromRoman(string romanSymbol,Note key){
-        ChordFunctionLookup cf = ChordFunctions;
-        Chord cc;
-        if(cf[romanSymbol]){
-            cc= cf[romanSymbol](key);
-            //cout<<"getChordFromRoman "<<romanSymbol<<endl;
+    static ChordPtr getChordFromRoman(string romanSymbol,NotePtr key){
+        if(romanSymbol ==""){
+            cout<<"Progression::getChordFromRoman empty symbol"<<endl;
+            return Chord::create();
+        }
+        
+        ChordPtr cc = Chord::create();
+        if(ChordFunctions[romanSymbol]){
+            cc= ChordFunctions[romanSymbol](key);
+            //cout<<"getChordFromRoman "<<romanSymbol<<" in "<<key->getName()<<" becomes "<<cc<<endl;
         }else{
-            ofLog()<<"Progression::getChordFromRoman error not found: "<<romanSymbol<<endl;
+            cout<<"Progression::getChordFromRoman error not found: "<<romanSymbol<<endl;
         }
         return cc;
     }
@@ -429,11 +387,11 @@ class Progression {
 	
         string newRoman,newAcc;
         int i,a;
-        IntLookup Lookilook = RomanLookup;//instance...not sure why needed
+        
         //Minor to major substitution
         if(tuple.suffix == "m" || tuple.suffix == "m7" || (tuple.suffix == "" && (tuple.roman == "II" ||tuple.roman ==  "III" || tuple.roman ==  "VI")) || ignore_suffix){
             
-            i = Lookilook[tuple.roman];
+            i = RomanLookup[tuple.roman];
             newRoman = ROMAN[(i+2) % 7];
             a = Progression::intervalDiff(tuple.roman,newRoman, 3) + tuple.accidentals;
             
@@ -476,12 +434,12 @@ class Progression {
 
         string newRoman,newAcc;
         int i,a;
-        IntLookup Lookilook = RomanLookup;
-            
+
+        
         //Major to minor substitution
         if(tuple.suffix == "M" || tuple.suffix == "M7" || (tuple.suffix == "" && (tuple.roman == "I" || tuple.roman == "IV"|| tuple.roman == "V")) || ignore_suffix){
             
-            i = Lookilook[tuple.roman];
+            i = RomanLookup[tuple.roman];
             newRoman = ROMAN[(i+5) % 7];
             a = Progression::intervalDiff(tuple.roman,newRoman, 9) + tuple.accidentals;
             
@@ -524,9 +482,6 @@ class Progression {
         string newRoman,newAcc;
          
         int i,a = tuple.accidentals;
-        IntLookup Lookilook = RomanLookup;
-        
-        
         
         //Diminished progressions
         if(tuple.suffix == "dim7" || tuple.suffix == "dim" || (tuple.suffix == "" && tuple.roman== "VII") || ignore_suffix){
@@ -538,7 +493,7 @@ class Progression {
             //Add diminished chord
             string last = tuple.roman;
             for(int x=0;x<3;x++){
-                i = Lookilook[last];
+                i = RomanLookup[last];
                 newRoman = ROMAN[(i+2) % 7];
                 a += Progression::intervalDiff(last, newRoman, 3);
                 newAcc = Progression::cleanAccidentals(a);
@@ -561,10 +516,7 @@ class Progression {
         string newRoman,newAcc,domRoman;
         
         int i,a = tuple.accidentals;
-        IntLookup Lookilook = RomanLookup;
 
-        
-        
         
         //Diminished progressions
         if(tuple.suffix == "dim7" || tuple.suffix == "dim" || (tuple.suffix == "" && tuple.roman == "VII") || ignore_suffix){
@@ -575,7 +527,7 @@ class Progression {
             //Add diminished chord
             string last = tuple.roman;
             for(int x=0;x<4;x++){
-                i = Lookilook[last];
+                i = RomanLookup[last];
                 newRoman = ROMAN[(i+2) % 7];
                 domRoman = ROMAN[(i+5) % 7];
                 a = Progression::intervalDiff(last, domRoman, 8)+tuple.accidentals;
@@ -706,7 +658,7 @@ class Progression {
      */
     
     
-    static vector< vector<string> > determine(vector< deque<Note> > notes, Note key, bool shorthand = false){
+    static vector< vector<string> > determine(vector< deque<NotePtr> > notes, NotePtr key, bool shorthand = false){
         vector< vector<string> > result;
         
         for(int i=0;i<notes.size();i++){
@@ -717,14 +669,23 @@ class Progression {
         
     }
     
-    
-    
-    
-    static vector< vector<string> > determine(vector<Chord> chords, Note key, bool shorthand = false){
+    static vector< vector<string> > determine(deque<ChordPtr> chords, NotePtr key, bool shorthand = false){
         vector< vector<string> > result;
         
         for(int i=0;i<chords.size();i++){
-            result.push_back(Progression::determine(chords[i].notes,key,shorthand));
+            result.push_back(Progression::determine(chords[i]->notes,key,shorthand));
+        }
+        
+        return result;
+        
+    }
+    
+    
+    static vector< vector<string> > determine(vector<ChordPtr> chords, NotePtr key, bool shorthand = false){
+        vector< vector<string> > result;
+        
+        for(int i=0;i<chords.size();i++){
+            result.push_back(Progression::determine(chords[i]->notes,key,shorthand));
         }
         
         return result;
@@ -732,12 +693,31 @@ class Progression {
     }
     /*
      <Cm7,Adim,E7b9>
+     If using poly chords can return more complex relationships, hence nested vector
      */
-    static vector< vector<string> > determine(vector<string> chordNames, Note key, bool shorthand = false, bool useInversions = true, bool usePoly = true){
+    static vector< vector<string> > determine(vector<string> chordNames, NotePtr key, bool shorthand = false, bool useInversions = true, bool usePoly = true){
         vector< vector<string> > result;
-        
+        for(string chordName:chordNames){
+            vector<string>progressionInterpretation;
+            result.push_back(progressionInterpretation);
+        }
         for(int i=0;i<chordNames.size();i++){
-            result.push_back(Progression::determine(Chord::getChordFromString(chordNames[i]).notes,key,shorthand,useInversions,usePoly));
+            string chordName = chordNames[i];
+            //cout<<"Here chordName "<<chordName<<endl;
+            ChordPtr chord = Chord::create(chordName);
+            //Chord::print(chord->notes);
+            if(chord->isValid()){
+                vector<string>progressionInterpretation = Progression::determine(chord->notes,key,shorthand,useInversions,usePoly);
+                for(int ii=0;ii<progressionInterpretation.size();ii++){
+                    result[i].push_back(progressionInterpretation[ii]);
+                }
+                Progression::print(progressionInterpretation);
+                
+            }else{
+                ofLogWarning()<<__FUNCTION__<<" "<<chordName<<" not valid"<<endl;
+                
+            }
+            
         }
         
         return result;
@@ -745,15 +725,13 @@ class Progression {
     }
     
     
-    static vector<string> determine(string chordName, Note key, bool shorthand = false, bool useInversions = true, bool usePoly = true){
+    static vector<string> determine(string chordName, NotePtr key, bool shorthand = false, bool useInversions = true, bool usePoly = true){
         
-        
+        ofStringReplace(chordName," ","");
         
         //check for poly and slash chords
         vector<string> slash = ofSplitString(chordName, "/");//different bass
         vector<string> poly = ofSplitString(chordName, "|");//combined chords
-        
-        
         
         string func = "";
         if(poly.size()==2 && poly[0]!=poly[1]){
@@ -773,12 +751,16 @@ class Progression {
         result.push_back(func);
         
         if(useInversions || usePoly){
-            Chord chord = Chord::getChordFromString(chordName);
-            vector<string> permutations = Progression::determine(chord.notes,key,shorthand,useInversions,usePoly);
-            for(int i=0;i<permutations.size();i++){
-                if(permutations[i]!=func){
-                    result.push_back(permutations[i]);
+            ChordPtr chord = Chord::getChordFromString(chordName);
+            if(chord->isValid()){
+                vector<string> permutations = Progression::determine(chord->notes,key,shorthand,useInversions,usePoly);
+                for(int i=0;i<permutations.size();i++){
+                    if(permutations[i]!=func){
+                        result.push_back(permutations[i]);
+                    }
                 }
+            }else{
+                ofLogWarning()<<__FUNCTION__<<" "<<chordName<<" not valid"<<endl;
             }
         }
 
@@ -786,26 +768,28 @@ class Progression {
     }
     
     
-    static vector<string> determine(deque<Note> notes, Note key, bool shorthand = true, bool useInversions = true, bool usePoly = true){
+    static vector<string> determine(deque<NotePtr> notes, NotePtr key, bool shorthand = true, bool useInversions = true, bool usePoly = false){
         vector<string> result;
         if(notes.size()==0){
-            ofLog()<<"Warning: Progression::determin empty notes"<<endl;
+            ofLogWarning()<<"Warning: Progression::determine empty notes"<<endl;
             return result;
         }
         
         
-        //cout<<"Progression::determine"<<endl;
+        cout<<"Progression::determine"<<endl;
         Chord::print(notes);
-        
         
         vector<string> type_of_chord = Chord::determine(notes, true, useInversions, usePoly);//shorthand,inversion,poly
         
-        //cout<<"type_of_chord.size  "<<type_of_chord.size()<<endl;
-        
-        
+        if(!type_of_chord.size()){
+            Chord::print(notes);
+            ofLogWarning()<<" don't give a type"<<endl;
+        }
+
+
         for(int i=0;i<type_of_chord.size();i++){
             string chordStr = type_of_chord[i];
-            //cout<<"chordStr "<<chordStr<<endl;
+            cout<<"chordStr "<<chordStr<<endl;
             
             //check for poly and slash chords
             vector<string> slash = ofSplitString(chordStr, "/");//different bass
@@ -824,8 +808,9 @@ class Progression {
                 func = top+"/"+bass;
             }else{
                 func = Progression::getFunctionInRoman(chordStr,key,shorthand);
+
             }
-            
+            ofLogVerbose()<<chordStr<<" is "<<func<<" in key "<<key->getName()<<endl;
             // Add to results
             result.push_back(func);
         }
@@ -834,55 +819,33 @@ class Progression {
     }
     
                                                                             
-    static string getFunctionInRoman(string chordStr,Note key, bool shorthand = true){
+    static string getFunctionInRoman(string chordStr,NotePtr key, bool shorthand = true){
+        
+        
         
         //this only affects shorthand false
-        map<string, string> func_dict;
-        func_dict["I"] ="tonic";
-        func_dict["II"] ="supertonic";//was lower
-        func_dict["III"] ="mediant";//was lower
-        func_dict["IV"] ="subdominant";
-        func_dict["V"] ="dominant";
-        func_dict["VI"] ="submediant";//was lower
-        func_dict["#VI"] ="subtonic";
-        func_dict["bVII"] ="subtonic";//was lower//wa
-        func_dict["VII"] ="leadingtone";//was lower//wa
+        map<string, string> func_dict = {
+        {"I","tonic"},
+        {"II","supertonic"},
+        {"III","mediant"},
+        {"IV","subdominant"},
+        {"V","dominant"},
+        {"VI","submediant"},
+        {"#VI","subtonic"},
+        {"bVII","subtonic"},
+        {"VII","leadingtone"}
+        };
         
-        map<string, vector<string> > expected_chord;
-        vector<string> M;
-        M.push_back("M");
-        M.push_back("M7");
-        expected_chord["I"]  = M;
-        expected_chord["IV"]  = M;
+
+
         
-        vector<string> m;
-        m.push_back("m");
-        m.push_back("m7");
-        expected_chord["II"]  = m;
-        expected_chord["III"]  = m;
-        expected_chord["VI"]  = m;
-        expected_chord["VII"]  = m;
-        
-        vector<string> M7;
-        M7.push_back("M");
-        M7.push_back("7");
-        expected_chord["V"]  = M7;
-        
-        vector<string> dim;
-        dim.push_back("dim");
-        dim.push_back("m7b5");
-        expected_chord["VII"]  = dim;
-        
-        
-        
-        
-        Chord chord = Chord::getChordFromString(chordStr);
-        cout<<"Determine function for "<<chordStr<<" "<<chord.name<<endl;
-        Note root = chord.getRoot();
+        ChordPtr chord = Chord::getChordFromString(chordStr);
+        cout<<"Determine function for "<<chordStr<<" "<<chord->name<<endl;
+        NotePtr root = chord->getRoot();
         
         //string chord_type = chord.getChordSymbol();
         
-        string chord_type = chord.name;
+        string chord_type = chord->name;
         
         //Determine chord function
         
@@ -911,12 +874,37 @@ class Progression {
             func = "VII";//was lower
         }
         
+        
+        if(shorthand){
+            func += chord_type;
+        }else{
+            func = func_dict[func] + Chord::getFullName(chord_type);
+        }
+    
+        /*
+    
+         
+        vector<string> M = {"M","M7"};
+        vector<string> m = {"m","m7"};
+        vector<string> M7 = {"M","7"};
+        vector<string> dim = {"dim","m7b5"};
+        
+        map<string, vector<string> > expected_chord = {
+        {"I",M},
+        {"IV",M},
+        {"II",m},
+        {"III",m},
+        {"VI",m},
+        {"VII",m},
+        {"V",M7},
+        {"VII",dim}
+        };
 
+
+        
         //Check whether the chord is altered or not
         typedef map<string, vector<string> >::iterator it_type;
         for(it_type iterator = expected_chord.begin(); iterator != expected_chord.end(); iterator++) {
-            
-            
             if(iterator->first == func){
                 
                 //Triads
@@ -941,10 +929,13 @@ class Progression {
                 }
             }
         }
+        
+        */
+        
+        
         //Handle b's and #'s (for instance Dbm in key C is bII)
         if (shorthand){
             if (interval_type == "minor"){
-               
                 func = "b" + func;
             }else if( interval_type == "augmented"){
                 func = "#" + func;
@@ -962,9 +953,60 @@ class Progression {
         }
         
         
-        cout<<"Interval: "<<interval_type<<" "<<interval<<" key: "<<key<<" root: "<<root<<" function: "<<func<<" symbol: " <<chord_type<<endl;
+        //cout<<"Interval: "<<interval_type<<" "<<interval<<" key: "<<key<<" root: "<<root<<" function: "<<func<<" symbol: " <<chord_type<<endl;
         
         return func;
+    }
+    
+    /*
+    Aliases
+    */
+    //Should work http://stackoverflow.com/questions/3053561/how-do-i-assign-an-alias-to-a-function-name-in-c
+    //static vector<string> & analyse = determine;
+    
+    //const auto& analyse = determine;
+    
+
+     static vector<vector<string>> analyse(string chordNames, string keyString, bool shorthand = true, bool useInversions = true, bool usePoly = false){
+        NotePtr key = Note::create(keyString);
+        ofStringReplace(chordNames," ","");
+        vector<string>splitChords = ofSplitString(chordNames, ",");
+        return Progression::determine(splitChords, key, shorthand, useInversions, usePoly);
+    }
+    
+    
+    /*
+    
+    
+    First bar in Giant Steps
+    string progression = Progression::quickAnalysis("BM7,D7,GM7,Bb7,EbM7","G");
+    gives IIIM7,V7,I7,bIII7,bVIM7
+    
+    or #VM7,VII7,IIIM7,V7,I7 if considered in Eb
+    */
+    
+    static string quickAnalysis(string chordNames, string keyString){
+        bool shorthand = true;
+        bool useInversions = false;
+        bool usePoly = false;
+        
+        NotePtr key = Note::create(keyString);
+        ofStringReplace(chordNames," ","");
+        vector<string>splitChords = ofSplitString(chordNames, ",");
+        
+        vector<vector<string>> progStrs = Progression::determine(splitChords, key, shorthand, useInversions, usePoly);
+        
+        //deflate the nested structure to first options of each interpretation
+        vector<string>firstOpt;
+        for(vector<string> intrpt:progStrs){
+            if(intrpt.size()){
+                firstOpt.push_back(intrpt.front());
+            }else{
+                firstOpt.push_back("?");
+            }
+        }
+        
+        return ofJoinString(firstOpt, ",");
     }
     
     /*
@@ -981,8 +1023,6 @@ class Progression {
             }
         }
         cout<<" ]"<<endl;
-        
-        
     }
     
     static void print(vector<string> substitutes){
@@ -995,8 +1035,6 @@ class Progression {
             }
         }
         cout<<" ]"<<endl;
-        
-        
     }
     
     static void print(vector< vector<string> > prog){
@@ -1017,10 +1055,20 @@ class Progression {
             }
         }
         cout<<" ]"<<endl;
-        
-        
     }
     
+    
+    static void print(deque<ChordPtr> chords){
+        
+        cout <<"[ ";
+        for(int i = 0;i<chords.size();i++){
+            cout<<chords[i];
+            if(i<chords.size()-1){
+                cout<<", ";
+            }
+        }
+        cout<<" ]"<<endl;
+    }
     
 private:
     
@@ -1056,10 +1104,10 @@ private:
      and `progression2` is `interval`
      */
     static int intervalDiff(string progression1, string progression2,int interval){
-        IntLookup Lookilook = RomanLookup;
+
    
-        int i = numeral_intervals[Lookilook[progression1]];
-        int j = numeral_intervals[Lookilook[progression2]];
+        int i = numeral_intervals[RomanLookup[progression1]];
+        int j = numeral_intervals[RomanLookup[progression2]];
         
         int acc = 0;
         if(j < i){
@@ -1077,6 +1125,11 @@ private:
      }
     
 };//class
+
+
+//typedef shared_ptr<Progression> ProgressionPtr;
+
+
 };//namespace
 
 #endif

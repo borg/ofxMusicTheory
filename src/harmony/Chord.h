@@ -81,6 +81,7 @@
  * determine - Can recognize all the Chord that can be generated with from_shorthand (a lot) and their inversions.
  * from_shorthand - Generates Chord from shorthand (eg. 'Cmin7')
  
+ Borg: I have made major changes to these, totally as I felt like it.
  
  ================================================================================
  */
@@ -99,15 +100,13 @@ namespace MusicTheory{
     
     typedef map<string, string> Lookup;
     
-     
+
     
     //A cache for composed triads
-    static map<string, vector<Chord> > _triads_cache;
+    static map<string, vector<shared_ptr<Chord>>> _triads_cache;
     
     //A cache for composed sevenths
-    static map<string, vector<Chord> > _sevenths_cache;
-    
-    
+    static map<string, vector<shared_ptr<Chord>>> _sevenths_cache;
     
 
   /*
@@ -115,138 +114,158 @@ namespace MusicTheory{
    lookup chord abbreviations. This dictionairy is also
    used in determine_seventh()
    */
+    static Lookup ChordLookup = {
         
-        
-    const Lookup::value_type x[] = {
-
         //Triads
-		make_pair("m"," minor triad"),
-		make_pair("M"," major triad"),
-		make_pair(""," major triad"),
-		make_pair("dim"," diminished triad"),
+		{"m"," minor triad"},
+		{"M"," major triad"},
+		{""," major triad"},
+		{"dim"," diminished triad"},
         
         //Augmented Chord
-		make_pair("aug"," augmented triad"),
-		make_pair("+"," augmented triad"),
-		make_pair("7#5"," augmented minor seventh"),
-		make_pair("M7+5"," augmented major seventh"),//corrected borg
-		make_pair("M7+"," augmented major seventh"),
-		make_pair("m7+"," augmented minor seventh"),
-		make_pair("7+"," augmented major seventh"),
+		{"aug"," augmented triad"},
+		{"+"," augmented triad"},
+		{"m7#5"," augmented minor seventh"},
+        {"7#5"," augmented major seventh"},
+        {"7#5#9"," augmented major seventh sharp ninth"},
+        {"7#9#5"," augmented major seventh sharp ninth"},
+		{"M7+5"," augmented major seventh"},
+		{"M7+"," augmented major seventh"},
+		{"m7+"," augmented minor seventh"},
+		{"7+"," augmented major seventh"},
+        
+        
         
         //Suspended Chord
-		make_pair("sus47"," suspended seventh"),
-		make_pair("sus4"," suspended fourth triad"),
-		make_pair("sus2"," suspended second triad"),
-		make_pair("sus"," suspended fourth triad"),
-		make_pair("11"," eleventh"),
-		make_pair("sus4b9"," suspended fourth ninth"),
-		make_pair("susb9"," suspended fourth ninth"),
+		{"sus47"," suspended seventh"},
+		{"sus4"," suspended fourth triad"},
+		{"sus2"," suspended second triad"},
+		{"sus"," suspended fourth triad"},
+		{"11"," eleventh"},
+		{"sus4b9"," suspended fourth ninth"},
+		{"susb9"," suspended fourth ninth"},
         
         //Sevenths
-		make_pair("m7"," minor seventh"),
-		make_pair("M7"," major seventh"),
-		make_pair("dom7"," dominant seventh"),
-		make_pair("7"," dominant seventh"),
-		make_pair("m7b5"," half diminished seventh"),
-		make_pair("dim7"," diminished seventh"),
-		make_pair("mM7"," minor/major seventh"),
+		{"m7"," minor seventh"},
+		{"M7"," major seventh"},
+		{"dom7"," dominant seventh"},
+		{"7"," dominant seventh"},
+		{"m7b5"," half diminished seventh"},
+        {"m9b5"," half diminished ninth"},
+        {"m11b5"," half diminished eleventh"},
+		{"dim7"," diminished seventh"},
+		{"mM7"," minor/major seventh"},
 		
 		
         //Sixths
-		make_pair("m6"," minor sixth"),
-		make_pair("M6"," major sixth"),
-		make_pair("6"," major sixth"),
-		make_pair("6/7"," dominant sixth"),
-		make_pair("67", " dominant sixth"),
-		make_pair("6/9"," sixth ninth"),
-		make_pair("69"," sixth ninth"),
+		{"m6"," minor sixth"},
+		{"M6"," major sixth"},
+		{"6"," major sixth"},
+		{"6/7"," dominant sixth"},
+		{"67", " dominant sixth"},
+		{"6/9"," sixth ninth"},
+		{"69"," sixth ninth"},
         
         //Ninths
-		make_pair("9"," dominant ninth"),
-		make_pair("7b9"," dominant flat ninth"),
-		make_pair("7#9"," dominant sharp ninth"),
-		make_pair("M9"," major ninth"),
-		make_pair("m9"," minor ninth"),
+		{"9"," dominant ninth"},
+		{"7b9"," dominant flat ninth"},
+		{"7#9"," dominant sharp ninth"},
+		{"M9"," major ninth"},
+		{"m9"," minor ninth"},
         
         //Elevenths
-		make_pair("7#11"," lydian dominant seventh"),
-		make_pair("m11"," minor eleventh"),
+		{"7#11"," lydian dominant seventh"},
+        {"9#11"," lydian dominant ninth"},
+		{"m11"," minor eleventh"},
+        {"m9/11"," minor ninth eleventh"},
         
         //Thirteenths
-		make_pair("M13"," major thirteenth"),
-		make_pair("m13"," minor thirteenth"),
+		{"M13"," major thirteenth"},
+		{"m13"," minor thirteenth"},
         
-		make_pair("13"," dominant thirteenth"),
+		{"13"," dominant thirteenth"},
         
         //Altered Chord
-		make_pair("7b5"," dominant flat five"),
+		{"7b5"," dominant flat five"},
+        {"7#9b13"," dominant sharp nine flat thirteen"},
+        
 		
         //Special
-		make_pair("hendrix"," hendrix chord"),
-		make_pair("7b12"," hendrix chord"),
-		make_pair("5"," perfect fifth")
+		{"hendrix"," hendrix chord"},
+		{"7b12"," hendrix chord"},
+		{"5"," perfect fifth"}
     };
     
-          
-      const Lookup ChordLookup(x, x + sizeof x / sizeof x[0]);
     
-class Chord {
-   
-	
-  // const map<int, int> m = {{1,2}, {3,4}};
+    
+    typedef shared_ptr<Chord> (*ChordShorthandFuncPointer)(NotePtr);
+    typedef map<string,ChordShorthandFuncPointer> ChordShorthandFuncLookup;
+    
+    
+    
+class Chord : public enable_shared_from_this<Chord>{
     
   public:
     
-    deque<Note> notes;
-    string name;
-    Note root;
-    //Note bass;
-    
-    /*
-     Recursive classes in C++? A class that contains instances of itself as children.  Apparently it was banned.
-    
-    I would rather use this but to include boost just for this seems unecessary
-    http://www.boost.org/doc/libs/1_48_0/doc/html/container/containers_of_incomplete_types.html
-     
-     Using of smart pointers instead
-    */
-    
-    vector< ofPtr<Chord> > polychords;
+    deque<NotePtr> notes;
+    string name = "";
+    NotePtr root;
+    int octave = 4;
+
+    vector< shared_ptr<Chord> > polychords;
     
     Chord(string _name = ""){
         if(_name !=""){
             set(_name);
-        }else{
-        //incomplete...fix this
-            name = "";
         }
     };
     
     
     
     void set(string _name = "C"){
-        Chord c = Chord::fromShorthand(_name);
-        name = c.name;
-        notes = c.notes;
+        shared_ptr<Chord> c = Chord::fromShorthand(_name);
+        if(c->isValid()){
+            name = c->name;
+            notes = c->notes;
         
-        Note r(getRootNote(_name));
-        setRoot(r);
+            NotePtr r = NotePtr(new Note(getRootNote(_name)));
+            setRoot(r);
+        }else{
+            ofSystemAlertDialog("Chord "+_name+" not recognized");
+        }
+    }
+    
+    
+    //factory methods
+    
+    static shared_ptr<Chord>create(string _name = ""){
+        return shared_ptr<Chord>(new Chord(_name));
+    }
+    
+    shared_ptr<Chord> copy(){
+        return shared_ptr<Chord>(new Chord(*this));//copy
     }
     
     string getName(){
+        if(!isValid()){
+            return "Invalid chord";
+        }
         string fullName;
-        if(getBass().getName()!=getRoot().getName()){
+        if(getBass()->getName()!=getRoot()->getName()){
             //slash chord
-            fullName = getRoot().getDiatonicName() + name+"/"+getBass().getDiatonicName();
+            fullName = getRoot()->getDiatonicName() + name+"/"+getBass()->getDiatonicName();
         }else if(polychords.size()>0){
             //ignoring for the moment more than one nested polychord...
-            fullName = getRoot().getDiatonicName() + name+"/"+getBass().getDiatonicName()+"|"+polychords[0]->getName();
+            fullName = getRoot()->getDiatonicName() + name+"/"+getBass()->getDiatonicName()+"|"+polychords[0]->getName();
         }else{
             //normal chord
-            fullName= getRoot().getDiatonicName() + name;
+            fullName= getRoot()->getDiatonicName() + name;
         }
         return fullName;
+    }
+    
+    bool isValid(){
+        return notes.size()>1;
     }
     
     /*
@@ -260,8 +279,8 @@ class Chord {
     /*
      Get all notes including those of nested polychords
      */
-    deque<Note> getAllNotes(){
-        deque<Note> allNotes = notes;
+    deque<NotePtr> getAllNotes(){
+        deque<NotePtr> allNotes = notes;
         if(polychords.size()>0){
             allNotes.insert(allNotes.end(), polychords[0]->notes.begin(),polychords[0]->notes.end());
         }
@@ -270,10 +289,260 @@ class Chord {
     
     
     
+//===================================================================
+#pragma mark - INSTANCE METHODS
+//===================================================================
+  
+
+    string getFullName(){
+        return Chord::getFullName(name);
+    }
+    /*
+     root might not be first note in notes
+     http://en.wikipedia.org/wiki/Root_%28chord%29
+     */
+   /* Note root(){
+  
+        if(root){
+        string rootStr = Chord::getRootNote(name);
+        cout<<"rootStr "<<rootStr<<endl;
+        NotePtr n(rootStr);
+        
+        return n;
+        }else{
+            return notes[0];
+        //}
+    }*/
+    
+    NotePtr getRoot(){
+        return root->copy();
+    }
     
     /*
-     STATIC METHODS
+    Not sure what is the best strategy here.
+    If made a copy root will linger like an orphan during transformations.
+    If getRoot return a copy then you can transform it and re assign with setRoot if
+    needed. Rootless chords still need a reference to the original root.
+    */
+    void setRoot(NotePtr n){
+        //root = n->copy();
+        root = n;
+    }
+    /*
+     Returns the lowest note.
      */
+    NotePtr getBass(){
+        sort(notes.begin(),notes.end(),Note::comparePtr);
+        if(notes.size()){
+            return notes[0]->copy();
+        }else{
+            ofLogError()<<"Chord is missing notes"<<endl;
+            return Note::create();
+        }
+        
+    }
+    
+    void setBass(NotePtr bass){
+        if(notes.size()){
+            NotePtr n = bass->copy();//copy
+            n->octave = notes[0]->getOctaveDown()->octave;
+            n->octaveDown();//arbitrary hack ha ha
+            notes.push_front(n);
+        }else{
+            ofLogError()<<"Chord is missing notes"<<endl;
+            return Note::create();
+        }
+    }
+    
+
+
+    
+	void changeOctave(int diff){
+        octave += diff;
+        if(octave < 0){
+            octave = 0;
+        }
+        
+        for(NotePtr note:notes){
+            note->changeOctave(diff);
+        }
+    }
+    
+    void setOctave(int oct){
+        
+        //Ableton starts at -2
+        oct = MAX(oct,-2);
+        
+        octave = oct;
+        
+        if(isValid()){
+            int firstNoteOct = notes[0]->getOctave();
+            int diff = oct - firstNoteOct;
+            for(NotePtr note:notes){
+                note->changeOctave(diff);
+            }
+        }
+    }
+    
+    int getOctave(){
+        return octave;
+    }
+    
+	void octaveUp(){
+        changeOctave(1);
+    }
+    
+	void octaveDown(){
+        changeOctave(-1);
+    }
+
+
+    
+    
+    
+    void setPolyChord(shared_ptr<Chord> pc){
+        
+        
+        shared_ptr<Chord> subchord = Chord::create();
+        subchord->name = pc->getChordSymbol();
+        subchord->notes = pc->notes;
+        subchord->setRoot(pc->getRoot());
+        
+        polychords.push_back(subchord);
+    }
+    
+    string getChordSymbol(){
+        string nm = getName();
+       // cout<<"Chord::getChordSymbol for "<<name<<" "<<nm<<endl;
+        string str = Chord::getChordSymbol(nm);
+        return str;
+    }
+  
+    
+
+//===================================================================
+#pragma mark -		 Harmonic function
+//===================================================================
+   
+   
+   /*
+   Note: isDominant will report true for isMajor as well. Best to check that first.
+   
+   */
+    bool isMajor(){
+        if(!isValid()){
+            return false;
+        }
+       
+        shared_ptr<Chord> copy = rootPosition();
+        return Interval::measure(copy->notes[0], copy->notes[1]) == 4;
+    }
+    
+    bool isMinor(){
+        if(!isValid()){
+            return false;
+        }
+       
+        shared_ptr<Chord> copy = rootPosition();
+        return Interval::measure(copy->notes[0], copy->notes[1]) == 3;
+    }
+    
+    bool isDominant(){
+        if(!isValid()){
+            return false;
+        }
+        shared_ptr<Chord> copy = rootPosition();
+        if(!(copy->notes.size() >= 4)){
+            return false;
+        }
+        
+        return Interval::measure(copy->notes[0], copy->notes[1]) == 4 && Interval::measure(copy->notes[0], copy->notes[3]) == 10;
+    }
+    
+    /*
+    Note: This is true for minor as well.
+    */
+
+    bool isDiminished(){
+        if(!isValid()){
+            return false;
+        }
+        shared_ptr<Chord> copy = rootPosition();
+        if(!(copy->notes.size() >= 3)){
+            return false;
+        }
+        
+        return Interval::measure(copy->notes[0], copy->notes[1]) == 3 && Interval::measure(copy->notes[0], copy->notes[2]) == 6;
+    }
+    
+    
+    
+//===================================================================
+#pragma mark -		 Voice leading functions
+//===================================================================
+   
+   /*
+   Useful for voice leading, keeping chord progressions dense.
+   Iterate through other chord notes to find notes at least distance to middle of this range.
+   Returns a copy.
+   */
+   
+    
+
+    shared_ptr<Chord> findNearestVoicing(shared_ptr<Chord> chord){
+        return Chord::findNearestVoicing(shared_from_this(),chord);
+    }
+    
+   /*
+   Useful for voice leading, keeping chord progressions dense.
+   Iterate through other chord notes to find notes at least distance to this note, ie. 
+   centering around this note.
+   Returns a copy.
+   */
+   
+    shared_ptr<Chord> findNearestVoicing(shared_ptr<Note> note){
+        return Chord::findNearestVoicing(shared_from_this(),note);
+    }
+    
+    /*
+   Useful for voice leading & chord melodies.
+   Iterate through other chord notes to find notes at least distance below this note.
+   If okToOverlap will not let any note duplicate, but will pitch down an octave.
+   Returns a copy.
+    */
+   
+    shared_ptr<Chord> findNearestVoicingBelow(shared_ptr<Note> note, bool okToOverlap = true){
+        return Chord::findNearestVoicingBelow(shared_from_this(),note,okToOverlap);
+    }
+    
+   /*
+   Useful for voice leading & chord melodies
+   Iterate through other chord notes to find notes at least distance above this note.
+   If okToOverlap will not let any note duplicate, but will pitch up an octave.
+   Returns a copy.
+    */
+   
+    shared_ptr<Chord> findNearestVoicingAbove(shared_ptr<Note> note, bool okToOverlap = true){
+      return Chord::findNearestVoicingAbove(shared_from_this(),note,okToOverlap);
+    }
+
+   /*
+   Move up/down octaves without changing voicing
+   Returns a copy.
+   */
+   
+    shared_ptr<Chord> findNearestTransposition(shared_ptr<Note> note){
+        return Chord::findNearestTransposition(shared_from_this(),note);
+    }
+ 
+    
+    
+//===================================================================
+#pragma mark - STATIC METHODS
+//===================================================================
+  
+    
+
     
     static string getFullName(string str){
         //why do I need to instantiate here? Odd
@@ -290,12 +559,9 @@ class Chord {
     }
     
     static vector<string> getAllKnownChords(){
-        //why do I need to instantiate here? Odd
-        Lookup m = ChordLookup;
         vector<string> chords;
-        
         typedef map<string, string>::iterator it_type;
-         for(it_type iterator = m.begin(); iterator != m.end(); iterator++) {
+         for(it_type iterator = ChordLookup.begin(); iterator != ChordLookup.end(); iterator++) {
              chords.push_back(iterator->first);
          }
         return chords;
@@ -303,80 +569,10 @@ class Chord {
     }
     
  
-    /*
-     INSTANCE METHODS
-     
-     */
-    string getFullName(){
-        return Chord::getFullName(name);
-    }
-    /*
-     root might not be first note in notes
-     http://en.wikipedia.org/wiki/Root_%28chord%29
-     */
-   /* Note root(){
-  
-        if(root){
-        string rootStr = Chord::getRootNote(name);
-        cout<<"rootStr "<<rootStr<<endl;
-        Note n(rootStr);
-        
-        return n;
-        }else{
-            return notes[0];
-        //}
-    }*/
     
-    Note getRoot(){
-        
-        //return notes[0]
-        
-        return root;
-    }
-    
-    void setRoot(Note n){
-        root = n;
-    }
-    /*
-     Returns the lowest note.
-     
-     Need to sort??
-     */
-    Note getBass(){
-        return notes[0];
-        
-    }
-    
-    void setBass(Note bass){
-        
-        Note n = bass;//copy
-        n.octave = notes[0].getOctaveDown().octave;
-        n.octaveDown();//arbitrary hack ha ha
-        notes.push_front(n);
-    }
-    
-    
-    void setPolyChord(Chord pc){
-        
-        
-        ofPtr<Chord> subchord(new Chord());
-        subchord->name = pc.getChordSymbol();
-        subchord->notes = pc.notes;
-        subchord->setRoot(pc.getRoot());
-        
-        polychords.push_back(subchord);
-    }
-    
-    string getChordSymbol(){
-        string nm = getName();
-       // cout<<"Chord::getChordSymbol for "<<name<<" "<<nm<<endl;
-        string str = Chord::getChordSymbol(nm);
-        return str;
-    }
-    
-/*===================================================================
-							Triads
-===================================================================*/
+//===================================================================
+#pragma mark - Triads
+//===================================================================
     
     
     //diatonic
@@ -390,15 +586,16 @@ class Chord {
         ["E", "G#", "B"]
     */
     
-    static Chord triad(Note note,Note key){
-        Chord chord;
-        chord.name = "";
-        chord.setRoot(note);
-        chord.notes.push_back(note);
-        Note n = Interval::third(note, key);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> triad(NotePtr note,NotePtr key){
+        shared_ptr<Chord> chord = Chord::create();
+        chord->notes.clear();
+        chord->name = "";
+        chord->setRoot(note);
+        chord->notes.push_back(note);
+        NotePtr n = Interval::third(note, key);
+        chord->notes.push_back(n);
         n = Interval::fifth(note, key);
-        chord.notes.push_back(n);
+        chord->notes.push_back(n);
         return chord;
     }
     
@@ -408,21 +605,21 @@ class Chord {
      Returns all the triads in key. Implemented using a cache.
     */
     
-    static vector<Chord> triads(Note key){
-        if(_triads_cache[key.name].size()>0){
-            return _triads_cache[key.name];
+    static vector<shared_ptr<Chord>> triads(NotePtr key){
+        if(_triads_cache[key->name].size()>0){
+            return Chord::copyCache(_triads_cache[key->name]);
         }
     
-        deque<Note> triads = Diatonic::getNotes(key);
+        deque<NotePtr> triads = Diatonic::getNotes(key);
         
-        vector<Chord> chords;
+        vector<shared_ptr<Chord>> chords;
         for(int i = 0;i<triads.size();i++){
-            Chord chord = Chord::triad(triads[i], key);
+            shared_ptr<Chord> chord = Chord::triad(triads[i], key);
             chords.push_back(chord);
         }
         
         
-        _triads_cache[key.name] = chords;
+        _triads_cache[key->name] = Chord::copyCache(chords);
         return chords;
     }
      
@@ -439,15 +636,16 @@ class Chord {
      
      */
     
-    static Chord majorTriad(Note note){
-        Chord chord;
-        chord.name = "M";
-        chord.setRoot(note);
-        chord.notes.push_back(note);
-        Note n = Interval::majorThird(note);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> majorTriad(NotePtr note){
+        shared_ptr<Chord> chord = Chord::create();
+        chord->notes.clear();
+        chord->name = "M";
+        chord->setRoot(note);
+        chord->notes.push_back(note);
+        NotePtr n = Interval::majorThird(note);
+        chord->notes.push_back(n);
         n = Interval::perfectFifth(note);
-        chord.notes.push_back(n);
+        chord->notes.push_back(n);
         return chord;
 
     }
@@ -461,15 +659,16 @@ class Chord {
      ["C", "Eb", "G"]
      
      */
-    static Chord minorTriad(Note note){
-        Chord chord;
-        chord.name = "m";
-        chord.setRoot(note);
-        chord.notes.push_back(note);
-        Note n = Interval::minorThird(note);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> minorTriad(NotePtr note){
+        shared_ptr<Chord> chord = Chord::create();
+        chord->notes.clear();
+        chord->name = "m";
+        chord->setRoot(note);
+        chord->notes.push_back(note);
+        NotePtr n = Interval::minorThird(note);
+        chord->notes.push_back(n);
         n = Interval::perfectFifth(note);
-        chord.notes.push_back(n);
+        chord->notes.push_back(n);
         return chord;
         
     }
@@ -483,15 +682,16 @@ class Chord {
      ["C", "Eb", "Gb"]
      
      */
-    static Chord diminishedTriad(Note note){
-        Chord chord;
-        chord.name = "dim";
-        chord.setRoot(note);
-        chord.notes.push_back(note);
-        Note n = Interval::minorThird(note);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> diminishedTriad(NotePtr note){
+        shared_ptr<Chord> chord = Chord::create();
+        chord->notes.clear();
+        chord->name = "dim";
+        chord->setRoot(note);
+        chord->notes.push_back(note);
+        NotePtr n = Interval::minorThird(note);
+        chord->notes.push_back(n);
         n = Interval::minorFifth(note);
-        chord.notes.push_back(n);
+        chord->notes.push_back(n);
         return chord;
         
     }
@@ -507,15 +707,16 @@ class Chord {
      ["C", "E", "G#"]
      
      */
-    static Chord augmentedTriad(Note note){
-        Chord chord;
-        chord.name = "aug";
-        chord.setRoot(note);
-        chord.notes.push_back(note);
-        Note n = Interval::majorThird(note);
-        chord.notes.push_back(n);
-        n = Interval::majorFifth(note);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> augmentedTriad(NotePtr note){
+        shared_ptr<Chord> chord = Chord::create();
+        chord->notes.clear();
+        chord->name = "aug";
+        chord->setRoot(note);
+        chord->notes.push_back(note);
+        NotePtr n = Interval::majorThird(note);
+        chord->notes.push_back(n);
+        n = Interval::augmentedFifth(note);
+        chord->notes.push_back(n);
         return chord;
         
     }
@@ -527,9 +728,9 @@ class Chord {
     
     
     
-/*===================================================================
-	Sevenths
-===================================================================*/
+//===================================================================
+#pragma mark -	Sevenths
+//===================================================================
     
     
     //diatonic
@@ -544,12 +745,12 @@ class Chord {
      
      */
     
-    static Chord seventh(Note note,Note key){
-        Chord chord = Chord::triad(note,key);
-        Note n = Interval::seventh(note, key);
-        chord.notes.push_back(n);
-        chord.name = "7";
-        chord.setRoot(note);
+    static shared_ptr<Chord> seventh(NotePtr note,NotePtr key){
+        shared_ptr<Chord> chord = Chord::triad(note,key);
+        NotePtr n = Interval::seventh(note, key);
+        chord->notes.push_back(n);
+        chord->name = "7";
+        chord->setRoot(note);
         return chord;
     }
     
@@ -563,27 +764,33 @@ class Chord {
      Returns all the sevenths in key. Implemented using a cache.
      */
     
-    static vector<Chord> sevenths(Note key){
-        if(_sevenths_cache[key.name].size()>0){
-            return _sevenths_cache[key.name];
+    static vector<shared_ptr<Chord>> sevenths(NotePtr key){
+        if(_sevenths_cache[key->name].size()>0){
+            return Chord::copyCache(_sevenths_cache[key->name]);
         }
         
-        deque<Note> triads = Diatonic::getNotes(key);
+        deque<NotePtr> triads = Diatonic::getNotes(key);
         
-        vector<Chord> chords;
+        vector<shared_ptr<Chord>> chords;
         for(int i = 0;i<triads.size();i++){
-            Chord chord = Chord::seventh(triads[i], key);
+            shared_ptr<Chord> chord = Chord::seventh(triads[i], key);
             chords.push_back(chord);
         }
         
         
-        _sevenths_cache[key.name] = chords;
+        _sevenths_cache[key->name] = Chord::copyCache(chords);
         return chords;
     }
     
     
     
-    
+    static vector<shared_ptr<Chord>> copyCache(vector<shared_ptr<Chord>>cache){
+        vector<shared_ptr<Chord>> _copy_cache;
+        for(shared_ptr<Chord> chord:cache){
+            _copy_cache.push_back(chord->copy());
+        }
+        return _copy_cache;
+    }
     
     
     //absolute
@@ -596,12 +803,12 @@ class Chord {
      ["C", "E", "G", "B"]
           */
     
-    static Chord majorSeventh(Note note){
-        Chord chord = Chord::majorTriad(note);
-        chord.name = "M7";
-        chord.setRoot(note);
-        Note n = Interval::majorSeventh(note);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> majorSeventh(NotePtr note){
+        shared_ptr<Chord> chord = Chord::majorTriad(note);
+        chord->name = "M7";
+        chord->setRoot(note);
+        NotePtr n = Interval::majorSeventh(note);
+        chord->notes.push_back(n);
         return chord;
     }
     
@@ -613,12 +820,12 @@ class Chord {
      
      */
     
-    static Chord minorSeventh(Note note){
-        Chord chord = Chord::minorTriad(note);
-        chord.name = "m7";
-        chord.setRoot(note);
-        Note n = Interval::minorSeventh(note);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> minorSeventh(NotePtr note){
+        shared_ptr<Chord> chord = Chord::minorTriad(note);
+        chord->name = "m7";
+        chord->setRoot(note);
+        NotePtr n = Interval::minorSeventh(note);
+        chord->notes.push_back(n);
         return chord;
     }
     
@@ -632,12 +839,12 @@ class Chord {
      
      */
     
-    static Chord dominantSeventh(Note note){
-        Chord chord = Chord::majorTriad(note);
-        chord.name = "dom7";
-        chord.setRoot(note);
-        Note n = Interval::minorSeventh(note);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> dominantSeventh(NotePtr note){
+        shared_ptr<Chord> chord = Chord::majorTriad(note);
+        chord->name = "7";
+        chord->setRoot(note);
+        NotePtr n = Interval::minorSeventh(note);
+        chord->notes.push_back(n);
         return chord;
     }
     
@@ -651,15 +858,44 @@ class Chord {
      
      */
     
-    static Chord halfDiminishedSeventh(Note note){
-        Chord chord = Chord::diminishedTriad(note);
-        chord.name = "m7b5";
-        chord.setRoot(note);
-        Note n = Interval::minorSeventh(note);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> halfDiminishedSeventh(NotePtr note){
+        shared_ptr<Chord> chord = Chord::diminishedTriad(note);
+        chord->name = "m7b5";
+        chord->setRoot(note);
+        NotePtr n = Interval::minorSeventh(note);
+        chord->notes.push_back(n);
         return chord;
     }
     
+    static shared_ptr<Chord> halfDiminishedNinth(NotePtr note){
+        shared_ptr<Chord> chord = Chord::diminishedTriad(note);
+        chord->name = "m9b5";
+        chord->setRoot(note);
+        NotePtr n = Interval::minorSeventh(note);
+        chord->notes.push_back(n);
+        n = Interval::majorSecond(note);
+        n->changeOctave(1);
+        chord->notes.push_back(n);
+        return chord;
+    }
+    
+    
+    //Very Bill Evans
+    //https://www.freejazzlessons.com/bill-evans-jazz-chords/
+    static shared_ptr<Chord> halfDiminishedEleventh(NotePtr note){
+        shared_ptr<Chord> chord = Chord::diminishedTriad(note);
+        chord->name = "m11b5";
+        chord->setRoot(note);
+        NotePtr n = Interval::minorSeventh(note);
+        chord->notes.push_back(n);
+        n = Interval::majorSecond(note);
+        n->changeOctave(1);
+        chord->notes.push_back(n);
+        n = Interval::majorFourth(note);
+        n->changeOctave(1);
+        chord->notes.push_back(n);
+        return chord;
+    }
     
     
     /*
@@ -667,7 +903,7 @@ class Chord {
      Seems just a duplicate naming convention
     */
     
-    static Chord minorSeventhFlatFive(Note note){
+    static shared_ptr<Chord> minorSeventhFlatFive(NotePtr note){
         return halfDiminishedSeventh(note);
     }
     
@@ -683,13 +919,13 @@ class Chord {
      
      */
     
-    static Chord diminishedSeventh(Note note){
-        Chord chord = Chord::diminishedTriad(note);
-        chord.name = "dim7";
-        chord.setRoot(note);
-        Note n = Interval::minorSeventh(note);
-        n.diminish();
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> diminishedSeventh(NotePtr note){
+        shared_ptr<Chord> chord = Chord::diminishedTriad(note);
+        chord->name = "dim7";
+        chord->setRoot(note);
+        NotePtr n = Interval::minorSeventh(note);
+        n->diminish();
+        chord->notes.push_back(n);
         return chord;
     }
     
@@ -704,12 +940,12 @@ class Chord {
      
      */
     
-    static Chord minorMajorSeventh(Note note){
-        Chord chord = Chord::minorTriad(note);
-        chord.name = "mM7";
-        chord.setRoot(note);
-        Note n = Interval::majorSeventh(note);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> minorMajorSeventh(NotePtr note){
+        shared_ptr<Chord> chord = Chord::minorTriad(note);
+        chord->name = "mM7";
+        chord->setRoot(note);
+        NotePtr n = Interval::majorSeventh(note);
+        chord->notes.push_back(n);
         return chord;
     }
     
@@ -719,9 +955,9 @@ class Chord {
     
     
     
-/*===================================================================
-	Sixths
-===================================================================*/
+//===================================================================
+#pragma mark -	Sixths
+//===================================================================
     
     
     // absolute
@@ -735,12 +971,12 @@ class Chord {
      
      */
     
-    static Chord minorSixth(Note note){
-        Chord chord = Chord::minorTriad(note);
-        chord.name = "m6";
-        chord.setRoot(note);
-        Note n = Interval::majorSixth(note);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> minorSixth(NotePtr note){
+        shared_ptr<Chord> chord = Chord::minorTriad(note);
+        chord->name = "m6";
+        chord->setRoot(note);
+        NotePtr n = Interval::majorSixth(note);
+        chord->notes.push_back(n);
         return chord;
     }
     
@@ -755,12 +991,12 @@ class Chord {
      
      */
     
-    static Chord majorSixth(Note note){
-        Chord chord = Chord::majorTriad(note);
-        chord.name = "M6";
-        chord.setRoot(note);
-        Note n = Interval::majorSixth(note);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> majorSixth(NotePtr note){
+        shared_ptr<Chord> chord = Chord::majorTriad(note);
+        chord->name = "M6";
+        chord->setRoot(note);
+        NotePtr n = Interval::majorSixth(note);
+        chord->notes.push_back(n);
         return chord;
     }
     
@@ -775,12 +1011,12 @@ class Chord {
      
      */
     
-    static Chord dominantSixth(Note note){
-        Chord chord = Chord::majorSixth(note);
-        chord.name = "67";
-        chord.setRoot(note);
-        Note n = Interval::minorSeventh(note);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> dominantSixth(NotePtr note){
+        shared_ptr<Chord> chord = Chord::majorSixth(note);
+        chord->name = "67";
+        chord->setRoot(note);
+        NotePtr n = Interval::minorSeventh(note);
+        chord->notes.push_back(n);
         return chord;
     }
     
@@ -793,13 +1029,13 @@ class Chord {
      
      */
     
-    static Chord sixthNith(Note note){
-        Chord chord = Chord::majorSixth(note);
-        chord.name = "69";
-        chord.setRoot(note);
-        Note n = Interval::majorSecond(note);
-        n.changeOctave(1);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> sixthNith(NotePtr note){
+        shared_ptr<Chord> chord = Chord::majorSixth(note);
+        chord->name = "69";
+        chord->setRoot(note);
+        NotePtr n = Interval::majorSecond(note);
+        n->changeOctave(1);
+        chord->notes.push_back(n);
         return chord;
     }
         
@@ -807,9 +1043,9 @@ class Chord {
  
     
     
-/*===================================================================
-	Ninths
-===================================================================*/
+//===================================================================
+#pragma mark -	Ninths
+//===================================================================
     
     
     
@@ -824,13 +1060,13 @@ class Chord {
      
      */
     
-    static Chord minorNinth(Note note){
-        Chord chord = Chord::minorSeventh(note);
-        chord.name = "m9";
-        chord.setRoot(note);
-        Note n = Interval::majorSecond(note);
-        n.changeOctave(1);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> minorNinth(NotePtr note){
+        shared_ptr<Chord> chord = Chord::minorSeventh(note);
+        chord->name = "m9";
+        chord->setRoot(note);
+        NotePtr n = Interval::majorSecond(note);
+        n->changeOctave(1);
+        chord->notes.push_back(n);
         return chord;
     }
     
@@ -843,13 +1079,13 @@ class Chord {
      
      */
     
-    static Chord majorNinth(Note note){
-        Chord chord = Chord::majorSeventh(note);
-        chord.name = "M9";
-        chord.setRoot(note);
-        Note n = Interval::majorSecond(note);
-        n.changeOctave(1);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> majorNinth(NotePtr note){
+        shared_ptr<Chord> chord = Chord::majorSeventh(note);
+        chord->name = "M9";
+        chord->setRoot(note);
+        NotePtr n = Interval::majorSecond(note);
+        n->changeOctave(1);
+        chord->notes.push_back(n);
         return chord;
     }
     
@@ -862,13 +1098,13 @@ class Chord {
      
      */
     
-    static Chord dominantNinth(Note note){
-        Chord chord = Chord::dominantSeventh(note);
-        chord.name = "9";
-        chord.setRoot(note);
-        Note n = Interval::majorSecond(note);
-        n.changeOctave(1);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> dominantNinth(NotePtr note){
+        shared_ptr<Chord> chord = Chord::dominantSeventh(note);
+        chord->name = "9";
+        chord->setRoot(note);
+        NotePtr n = Interval::majorSecond(note);
+        n->changeOctave(1);
+        chord->notes.push_back(n);
         return chord;
     }
     
@@ -883,13 +1119,13 @@ class Chord {
      This is pretty flamenco
      */
     
-    static Chord dominantFlatNinth(Note note){
-        Chord chord = Chord::dominantNinth(note);
-        chord.name = "7b9";
-        chord.setRoot(note);
-        Note n = Interval::minorSecond(note);
-        n.changeOctave(1);
-        chord.notes[4]= n;//lower ninth
+    static shared_ptr<Chord> dominantFlatNinth(NotePtr note){
+        shared_ptr<Chord> chord = Chord::dominantNinth(note);
+        chord->name = "7b9";
+        chord->setRoot(note);
+        NotePtr n = Interval::minorSecond(note);
+        n->changeOctave(1);
+        chord->notes[4]= n;//lower ninth
         return chord;
     }
     
@@ -906,14 +1142,14 @@ class Chord {
      Hendrix right?
      */
     
-    static Chord dominantSharpNinth(Note note){
-        Chord chord = Chord::dominantNinth(note);
-        chord.name = "7#9";
-        chord.setRoot(note);
-        Note n = Interval::majorSecond(note);
-        n.changeOctave(1);
-        n.augment();
-        chord.notes[4]= n;//raise ninth
+    static shared_ptr<Chord> dominantSharpNinth(NotePtr note){
+        shared_ptr<Chord> chord = Chord::dominantNinth(note);
+        chord->name = "7#9";
+        chord->setRoot(note);
+        NotePtr n = Interval::majorSecond(note);
+        n->changeOctave(1);
+        n->augment();
+        chord->notes[4]= n;//raise ninth
         return chord;
     }
     
@@ -922,9 +1158,9 @@ class Chord {
     
     
     
-/*===================================================================
-	Elevenths
-===================================================================*/
+//===================================================================
+#pragma mark -	Elevenths
+//===================================================================
     
     //diatonic
     
@@ -941,18 +1177,19 @@ class Chord {
      
      */
     
-    static Chord eleventh(Note note){
-        Chord chord;
-        chord.name = "11";
-        chord.setRoot(note);
-        chord.notes.push_back(note);
-        Note n = Interval::perfectFifth(note);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> eleventh(NotePtr note){
+        shared_ptr<Chord> chord = Chord::create();
+        chord->notes.clear();
+        chord->name = "11";
+        chord->setRoot(note);
+        chord->notes.push_back(note);
+        NotePtr n = Interval::perfectFifth(note);
+        chord->notes.push_back(n);
         n = Interval::minorSeventh(note);
-        chord.notes.push_back(n);
+        chord->notes.push_back(n);
         n = Interval::perfectFourth(note);
-        n.changeOctave(1);
-        chord.notes.push_back(n);
+        n->changeOctave(1);
+        chord->notes.push_back(n);
         return chord;
     }
     
@@ -962,23 +1199,32 @@ class Chord {
      Example: 
      minor_eleventh("C")
      ['C', 'Eb', 'G', 'Bb', 'F']
-     
+     Sometimes includes the ninth
      */
     
-    static Chord minorEleventh(Note note){
-        Chord chord = Chord::minorSeventh(note);
-        chord.name = "m11";
-        chord.setRoot(note);
-        Note n = Interval::perfectFourth(note);
-        n.changeOctave(1);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> minorEleventh(NotePtr note){
+        shared_ptr<Chord> chord = Chord::minorSeventh(note);
+        chord->name = "m11";
+        chord->setRoot(note);
+        NotePtr n = Interval::perfectFourth(note);
+        n->changeOctave(1);
+        chord->notes.push_back(n);
         return chord;
     }
     
     
-/*===================================================================
-	Thirteenths
-===================================================================*/
+    static shared_ptr<Chord> minorNinthEleventh(NotePtr note){
+        shared_ptr<Chord> chord = Chord::minorNinth(note);
+        chord->name = "m9/11";
+        chord->setRoot(note);
+        NotePtr n = Interval::perfectFourth(note);
+        n->changeOctave(1);
+        chord->notes.push_back(n);
+        return chord;
+    }
+//===================================================================
+#pragma mark -	Thirteenths
+//===================================================================
     
     // absolute
     
@@ -990,13 +1236,13 @@ class Chord {
      
      */
     
-    static Chord minorThirteenth(Note note){
-        Chord chord = Chord::minorNinth(note);
-        chord.name = "m13";
-        chord.setRoot(note);
-        Note n = Interval::majorSixth(note);
-        n.changeOctave(1);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> minorThirteenth(NotePtr note){
+        shared_ptr<Chord> chord = Chord::minorNinth(note);
+        chord->name = "m13";
+        chord->setRoot(note);
+        NotePtr n = Interval::majorSixth(note);
+        n->changeOctave(1);
+        chord->notes.push_back(n);
         return chord;
     }
     
@@ -1009,13 +1255,13 @@ class Chord {
      
      */
     
-    static Chord majorThirteenth(Note note){
-        Chord chord = Chord::majorNinth(note);
-        chord.name = "M13";
-        chord.setRoot(note);
-        Note n = Interval::majorSixth(note);
-        n.changeOctave(1);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> majorThirteenth(NotePtr note){
+        shared_ptr<Chord> chord = Chord::majorNinth(note);
+        chord->name = "M13";
+        chord->setRoot(note);
+        NotePtr n = Interval::majorSixth(note);
+        n->changeOctave(1);
+        chord->notes.push_back(n);
         return chord;
     }
     
@@ -1029,15 +1275,17 @@ class Chord {
      dominant_thirteenth('C')
      ['C', 'E', 'G', 'Bb', 'D', 'A']
      
+     Normally root & fifth are dropped and third possibly replaced by 11th
+     
      */
     
-    static Chord dominantThirteenth(Note note){
-        Chord chord = Chord::dominantNinth(note);
-        chord.name = "13";
-        chord.setRoot(note);
-        Note n = Interval::majorSixth(note);
-        n.changeOctave(1);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> dominantThirteenth(NotePtr note){
+        shared_ptr<Chord> chord = Chord::dominantNinth(note);
+        chord->name = "13";
+        chord->setRoot(note);
+        NotePtr n = Interval::majorSixth(note);
+        n->changeOctave(1);
+        chord->notes.push_back(n);
         return chord;
     }
     
@@ -1047,9 +1295,9 @@ class Chord {
     
     
     
-/*===================================================================
-	Suspended Chords
-===================================================================*/
+//===================================================================
+#pragma mark -	Suspended Chords
+//===================================================================
     
     
     //absolute
@@ -1061,8 +1309,8 @@ class Chord {
     An alias for suspended_fourth_triad
      */
     
-    static Chord suspendedTriad(Note note){
-        Chord chord = Chord::suspendedFourthTriad(note);
+    static shared_ptr<Chord> suspendedTriad(NotePtr note){
+        shared_ptr<Chord> chord = Chord::suspendedFourthTriad(note);
         return chord;
     }
     
@@ -1077,15 +1325,16 @@ class Chord {
      
      */
     
-    static Chord suspendedSecondTriad(Note note){
-        Chord chord;
-        chord.name = "sus2";
-        chord.setRoot(note);
-        chord.notes.push_back(note);
-        Note n = Interval::majorSecond(note);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> suspendedSecondTriad(NotePtr note){
+        shared_ptr<Chord> chord = Chord::create();
+        chord->notes.clear();
+        chord->name = "sus2";
+        chord->setRoot(note);
+        chord->notes.push_back(note);
+        NotePtr n = Interval::majorSecond(note);
+        chord->notes.push_back(n);
         n = Interval::perfectFifth(note);
-        chord.notes.push_back(n);
+        chord->notes.push_back(n);
         return chord;
     }
         
@@ -1098,15 +1347,16 @@ class Chord {
      
      */
     
-    static Chord suspendedFourthTriad(Note note){
-        Chord chord;
-        chord.name = "sus4";
-        chord.setRoot(note);
-        chord.notes.push_back(note);
-        Note n = Interval::perfectFourth(note);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> suspendedFourthTriad(NotePtr note){
+        shared_ptr<Chord> chord = Chord::create();
+        chord->notes.clear();
+        chord->name = "sus4";
+        chord->setRoot(note);
+        chord->notes.push_back(note);
+        NotePtr n = Interval::perfectFourth(note);
+        chord->notes.push_back(n);
         n = Interval::perfectFifth(note);
-        chord.notes.push_back(n);
+        chord->notes.push_back(n);
         return chord;
     }
     
@@ -1122,13 +1372,13 @@ class Chord {
      
      */
     
-    static Chord suspendedSeventh(Note note){
-        Chord chord = Chord::suspendedFourthTriad(note);
-        chord.name = "sus47";
-        chord.setRoot(note);
-        chord.notes.push_back(note);
-        Note n = Interval::minorSeventh(note);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> suspendedSeventh(NotePtr note){
+        shared_ptr<Chord> chord = Chord::suspendedFourthTriad(note);
+        chord->name = "sus47";
+        chord->setRoot(note);
+        chord->notes.push_back(note);
+        NotePtr n = Interval::minorSeventh(note);
+        chord->notes.push_back(n);
         return chord;
     }
     
@@ -1143,14 +1393,14 @@ class Chord {
      
      */
     
-    static Chord suspendedFourthNinth(Note note){
-        Chord chord = Chord::suspendedFourthTriad(note);
-        chord.name = "sus4b9";
-        chord.setRoot(note);
-        chord.notes.push_back(note);
-        Note n = Interval::minorSecond(note);
-        n.changeOctave(1);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> suspendedFourthNinth(NotePtr note){
+        shared_ptr<Chord> chord = Chord::suspendedFourthTriad(note);
+        chord->name = "sus4b9";
+        chord->setRoot(note);
+        chord->notes.push_back(note);
+        NotePtr n = Interval::minorSecond(note);
+        n->changeOctave(1);
+        chord->notes.push_back(n);
         return chord;
     }
     
@@ -1160,9 +1410,9 @@ class Chord {
     
     
     
-/*===================================================================
-	Augmented Chords
-===================================================================*/
+//===================================================================
+#pragma mark -	Augmented Chords
+//===================================================================
     
     
     
@@ -1175,12 +1425,12 @@ class Chord {
      
      */
     
-    static Chord augmentedMajorSeventh(Note note){
-        Chord chord = Chord::augmentedTriad(note);
-        chord.name = "M7+";
-        chord.setRoot(note);
-        Note n = Interval::majorSeventh(note);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> augmentedMajorSeventh(NotePtr note){
+        shared_ptr<Chord> chord = Chord::augmentedTriad(note);
+        chord->name = "M7+";
+        chord->setRoot(note);
+        NotePtr n = Interval::majorSeventh(note);
+        chord->notes.push_back(n);
         return chord;
     }
     
@@ -1195,20 +1445,38 @@ class Chord {
      
      */
     
-    static Chord augmentedMinorSeventh(Note note){
-        Chord chord = Chord::augmentedTriad(note);
-        chord.name = "m7+";
-        chord.setRoot(note);
-        Note n = Interval::minorSeventh(note);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> augmentedMinorSeventh(NotePtr note){
+        shared_ptr<Chord> chord = Chord::minorTriad(note);
+        chord->name = "m7+";
+        chord->setRoot(note);
+        chord->notes[2]->augment();
+        NotePtr n = Interval::minorSeventh(note);
+        chord->notes.push_back(n);
         return chord;
     }
     
+    
+    static shared_ptr<Chord> augmentedDominantSeventh(NotePtr note){
+        shared_ptr<Chord> chord = Chord::augmentedTriad(note);
+        chord->name = "7+";
+        chord->setRoot(note);
+        NotePtr n = Interval::minorSeventh(note);
+        chord->notes.push_back(n);
+        return chord;
+    }
+    
+    static shared_ptr<Chord> augmentedDominantSharpNinth(NotePtr note){
+        shared_ptr<Chord> chord = Chord::dominantNinth(note);
+        chord->name = "7+#9";
+        chord->setRoot(note);
+        chord->notes[2]->augment();
+        return chord;
+    }
         
-/*===================================================================
-	Various
-	Altered and Special chords
-===================================================================*/
+//===================================================================
+//	Various
+#pragma mark -	Altered and Special chords
+//===================================================================
     
     
     
@@ -1223,14 +1491,40 @@ class Chord {
      
      */
     
-    static Chord dominantFlatFive(Note note){
-        Chord chord = Chord::dominantSeventh(note);
-        chord.name = "7b5";
-        chord.setRoot(note);
-        chord.notes[2].diminish();
+    static shared_ptr<Chord> dominantFlatFive(NotePtr note){
+        shared_ptr<Chord> chord = Chord::dominantSeventh(note);
+        chord->name = "7b5";
+        chord->setRoot(note);
+        chord->notes[2]->diminish();
         return chord;
     }
     
+    static shared_ptr<Chord> dominantSharpNineFlatThirteen(NotePtr note){
+        shared_ptr<Chord> chord = Chord::dominantSeventh(note);
+        chord->name = "7#9b13";
+        chord->setRoot(note);
+        
+        NotePtr n = Interval::minorThird(note);
+        n->changeOctave(1);
+        chord->notes.push_back(n);
+        
+        n = Interval::minorSixth(note);
+        n->changeOctave(1);
+        chord->notes.push_back(n);
+        
+        return chord;
+    }
+    
+    
+    static shared_ptr<Chord> powerChord(NotePtr note){
+        shared_ptr<Chord> chord = Chord::create();
+        chord->name = "5";
+        chord->notes.clear();
+        chord->setRoot(note);
+        chord->notes.push_back(note);
+        chord->notes.push_back(Interval::fifth(note, note));
+        return chord;
+    }
     
     
     
@@ -1245,16 +1539,41 @@ class Chord {
      
      */
     
-    static Chord lydianDominantSeventh(Note note){
-        Chord chord = Chord::dominantSeventh(note);
-        chord.name = "7#11";
-        chord.setRoot(note);
-        Note n = Interval::perfectFourth(note);
-        n.augment();
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> lydianDominantSeventh(NotePtr note){
+        shared_ptr<Chord> chord = Chord::dominantSeventh(note);
+        chord->name = "7#11";
+        chord->setRoot(note);
+        NotePtr n = Interval::perfectFourth(note);
+        n->augment();
+        n->octaveUp();
+        chord->notes.push_back(n);
         return chord;
     }
     
+    static shared_ptr<Chord> lydianDominantNinth(NotePtr note){
+        shared_ptr<Chord> chord = Chord::dominantSeventh(note);
+        chord->name = "9#11";
+        chord->setRoot(note);
+        NotePtr n = Interval::majorSecond(note);
+        n->octaveUp();
+        chord->notes.push_back(n);
+        n = Interval::perfectFourth(note);
+        n->augment();
+        n->octaveUp();
+        chord->notes.push_back(n);
+        return chord;
+    }
+    
+    
+    static shared_ptr<Chord> lydianMajorSeventh(NotePtr note){
+        shared_ptr<Chord> chord = Chord::majorSeventh(note);
+        chord->name = "M7#11";
+        chord->setRoot(note);
+        NotePtr n = Interval::perfectFourth(note);
+        n->augment();
+        chord->notes.push_back(n);
+        return chord;
+    }
     
     
     /*
@@ -1265,23 +1584,65 @@ class Chord {
      
      */
     
-    static Chord hendrixChord(Note note){
-        Chord chord = Chord::dominantSeventh(note);
-        chord.name = "hendrix";
-        chord.setRoot(note);
-        Note n = Interval::minorThird(note);
-        chord.notes.push_back(n);
+    static shared_ptr<Chord> hendrixChord(NotePtr note){
+        shared_ptr<Chord> chord = Chord::dominantSeventh(note);
+        chord->name = "hendrix";
+        chord->setRoot(note);
+        NotePtr n = Interval::minorThird(note);
+        chord->notes.push_back(n);
         return chord;
+    }
+    
+//===================================================================
+#pragma mark -		Dropped notes
+//===================================================================
+
+
+    static shared_ptr<Chord> rootless(shared_ptr<Chord> chord){
+        if(!chord->isValid()){
+            return;
+        }
+        shared_ptr<Chord> chordCopy = chord->copy();
+        chordCopy->notes.pop_front();
+        return chordCopy;
+    }
+    
+    
+    static shared_ptr<Chord> noThird(shared_ptr<Chord> chord){
+        if(!chord->isValid()){
+            return;
+        }
+        shared_ptr<Chord> chordCopy = chord->copy();
+        int v = chordCopy->notes.size();
+        while(v--){
+            if(Interval::measure(chordCopy->getRoot(),chordCopy->notes[v]) == 3 || Interval::measure(chordCopy->getRoot(),chordCopy->notes[v]) == 4){
+                //removes major and minor thirds at any octave
+                chordCopy->notes.erase(chordCopy->notes.begin()+v);
+            }
+        }
+        return chordCopy;
     }
     
     
     
-        
+    static shared_ptr<Chord> noFifth(shared_ptr<Chord> chord){
+        if(!chord->isValid()){
+            return;
+        }
+        shared_ptr<Chord> chordCopy = chord->copy();
+        int v = chordCopy->notes.size();
+        while(v--){
+            if(Interval::measure(chordCopy->getRoot(),chordCopy->notes[v]) == 7){
+                //removes fifths at any octave
+                chordCopy->notes.erase(chordCopy->notes.begin()+v);
+            }
+        }
+        return chordCopy;
+    }
     
-    
-/*===================================================================
-	Chords by harmonic function
-===================================================================*/
+//===================================================================
+#pragma mark -		Chords by harmonic function
+//===================================================================
     
     
     
@@ -1295,7 +1656,7 @@ class Chord {
      
      */
     
-    static Chord tonic(Note key){
+    static shared_ptr<Chord> tonic(NotePtr key){
         return Chord::triads(key)[0];
     }
     
@@ -1305,8 +1666,8 @@ class Chord {
     /*
      Same as tonic(key), but returns seventh chord instead     */
     
-     static Chord tonic7(Note key){
-         Chord chord = Chord::sevenths(key)[0];
+     static shared_ptr<Chord> tonic7(NotePtr key){
+         shared_ptr<Chord> chord = Chord::sevenths(key)[0];
          return chord;
      }
     
@@ -1320,7 +1681,7 @@ class Chord {
      ["D", "F", "A"]
      */
     
-     static Chord supertonic(Note key){
+     static shared_ptr<Chord> supertonic(NotePtr key){
          return Chord::triads(key)[1];
      }
     
@@ -1333,8 +1694,8 @@ class Chord {
      Same as supertonic(key), but returns seventh chord
      */
     
-     static Chord supertonic7(Note key){
-         Chord chord = Chord::sevenths(key)[1];
+     static shared_ptr<Chord> supertonic7(NotePtr key){
+         shared_ptr<Chord> chord = Chord::sevenths(key)[1];
          return chord;
      }
     
@@ -1349,7 +1710,7 @@ class Chord {
      ["E", "G", "B"]
      */
     
-    static Chord mediant(Note key){
+    static shared_ptr<Chord> mediant(NotePtr key){
         return Chord::triads(key)[2];
     }
     
@@ -1359,9 +1720,9 @@ class Chord {
      Same as mediant(key), but returns seventh chord
      */
     
-    static Chord mediant7(Note key){
-        Chord chord = Chord::sevenths(key)[2];
-        //chord.name += "7";//added above already
+    static shared_ptr<Chord> mediant7(NotePtr key){
+        shared_ptr<Chord> chord = Chord::sevenths(key)[2];
+        //chord->name += "7";//added above already
         
         return chord;
 
@@ -1378,7 +1739,7 @@ class Chord {
      ["F", "A", "C"]
      */
     
-    static Chord subdominant(Note key){
+    static shared_ptr<Chord> subdominant(NotePtr key){
         return Chord::triads(key)[3];
     }
     
@@ -1389,9 +1750,9 @@ class Chord {
      Same as subdominant(key), but returns seventh chord
      */
     
-    static Chord subdominant7(Note key){
-        Chord chord = Chord::sevenths(key)[3];
-        //chord.name += "7";
+    static shared_ptr<Chord> subdominant7(NotePtr key){
+        shared_ptr<Chord> chord = Chord::sevenths(key)[3];
+        //chord->name += "7";
         return chord;
 
     }
@@ -1405,7 +1766,7 @@ class Chord {
      ["G", "B", "D"]
      */
     
-    static Chord dominant(Note key){
+    static shared_ptr<Chord> dominant(NotePtr key){
         return Chord::triads(key)[4];
     }
     
@@ -1414,9 +1775,9 @@ class Chord {
      Same as dominant(key), but returns seventh chord
      */
     
-    static Chord dominant7(Note key){
-        Chord chord = Chord::sevenths(key)[4];
-        //chord.name += "7";
+    static shared_ptr<Chord> dominant7(NotePtr key){
+        shared_ptr<Chord> chord = Chord::sevenths(key)[4];
+        //chord->name += "7";
         return chord;
 
     }
@@ -1430,7 +1791,7 @@ class Chord {
      ["A", "C", "E"]
      */
     
-    static Chord submediant(Note key){
+    static shared_ptr<Chord> submediant(NotePtr key){
         return Chord::triads(key)[5];
     }
     
@@ -1440,9 +1801,9 @@ class Chord {
      Same as submediant(key), but returns seventh chord
      */
     
-    static Chord submediant7(Note key){
-        Chord chord = Chord::sevenths(key)[5];
-        //chord.name += "7";
+    static shared_ptr<Chord> submediant7(NotePtr key){
+        shared_ptr<Chord> chord = Chord::sevenths(key)[5];
+        //chord->name += "7";
         return chord;
     }
     
@@ -1459,10 +1820,10 @@ class Chord {
      The subtonic is a whole step below the tonic and exists only naturally in minor keys
      */
     
-    static Chord subtonic(Note key){
-        Note wholeNoteDown = key.getTransposed(-2);
-        Chord ch = Chord::majorTriad(wholeNoteDown);
-        ch.setName("");
+    static shared_ptr<Chord> subtonic(NotePtr key){
+        NotePtr wholeNoteDown = key->getTransposed(-2);
+        shared_ptr<Chord> ch = Chord::majorTriad(wholeNoteDown);
+        ch->setName("");
         return ch;
         //return Chord::triads(key)[6];
     }
@@ -1473,11 +1834,11 @@ class Chord {
      Same as subtonic(key), but returns seventh chord
      */
     
-    static Chord subtonic7(Note key){
+    static shared_ptr<Chord> subtonic7(NotePtr key){
         
-        Note wholeNoteDown = key.getTransposed(-2);
-        Chord ch = Chord::dominantSeventh(wholeNoteDown);
-        ch.setName("7");
+        NotePtr wholeNoteDown = key->getTransposed(-2);
+        shared_ptr<Chord> ch = Chord::dominantSeventh(wholeNoteDown);
+        ch->setName("7");
         return ch;
         
         
@@ -1485,7 +1846,7 @@ class Chord {
         //return chord;
     }
     
-    static Chord leadingtone(Note key){
+    static shared_ptr<Chord> leadingtone(NotePtr key){
         return Chord::triads(key)[6];
     }
     
@@ -1495,126 +1856,152 @@ class Chord {
      Same as subtonic(key), but returns seventh chord
      */
     
-    static Chord leadingtone7(Note key){
-        Chord chord = Chord::sevenths(key)[6];
+    static shared_ptr<Chord> leadingtone7(NotePtr key){
+        shared_ptr<Chord> chord = Chord::sevenths(key)[6];
         return chord;
     }
 
     
-   
-    
-/*===================================================================
-	 Aliases
-===================================================================*/
+//===================================================================
+#pragma mark -		 Aliases
+//===================================================================
 
     
     
-    static Chord I(Note key){
+    static shared_ptr<Chord> I(NotePtr key){
         return Chord::tonic(key);
     }
     
-    static Chord I7(Note key){
+    /*
+    https://www.reddit.com/r/musictheory/comments/1bdws7/i7_in_g_major_uses_f_or_f/
+    
+     this was
+    static shared_ptr<Chord> I7(NotePtr key){
         return Chord::tonic7(key);
     }
     
-    static Chord ii(Note key){
+    for I7 which is confusing in jazz. I7 should be C7 not CM7
+    
+    
+    */
+    static shared_ptr<Chord> IM7(NotePtr key){
+        return Chord::majorSeventh(key);
+    }
+    static shared_ptr<Chord> I7(NotePtr key){
+        return Chord::dominantSeventh(key);
+        //Mingus
+        //return Chord::tonic7(key);
+    }
+    
+    static shared_ptr<Chord> ii(NotePtr key){
         return Chord::supertonic(key);
     }
     
-    static Chord II(Note key){
+    static shared_ptr<Chord> II(NotePtr key){
         return Chord::supertonic(key);
     }
     
-    static Chord ii7(Note key){
+    static shared_ptr<Chord> ii7(NotePtr key){
         return Chord::supertonic7(key);
     }
     
-    static Chord II7(Note key){
-        return Chord::supertonic7(key);
+    static shared_ptr<Chord> II7(NotePtr key){
+        NotePtr transKey = Interval::second(key, key);
+        return Chord::dominantSeventh(transKey);
+        //Mingus
+        //return Chord::supertonic7(key);
     }
     
-    static Chord iii(Note key){
+    static shared_ptr<Chord> iii(NotePtr key){
         return Chord::mediant(key);
     }
     
-    static Chord III(Note key){
+    static shared_ptr<Chord> III(NotePtr key){
         return Chord::mediant(key);
     }
     
-    static Chord iii7(Note key){
-        return Chord::mediant7(key);
+    static shared_ptr<Chord> iii7(NotePtr key){
+        NotePtr transKey = Interval::third(key, key);
+        return Chord::minorSeventh(transKey);
+        //Mingusreturn Chord::mediant7(key);
     }
     
-    static Chord III7(Note key){
-        return Chord::mediant7(key);
+    static shared_ptr<Chord> III7(NotePtr key){
+        NotePtr transKey = Interval::third(key, key);
+        return Chord::dominantSeventh(transKey);
+        //return Chord::mediant7(key);
     }
-    //In current project there is a conflict, the IV is blue, indicating it's defined somewhere
-    //I cannot find it, and I don't like defines.
     
-    static Chord IV(Note key){
+    static shared_ptr<Chord> IV(NotePtr key){
         return Chord::subdominant(key);
     }
     
-    static Chord IV7(Note key){
-        return Chord::subdominant7(key);
+    static shared_ptr<Chord> IV7(NotePtr key){
+        NotePtr transKey = Interval::fourth(key, key);
+        return Chord::dominantSeventh(transKey);
+        //return Chord::subdominant7(key);
     }
     
-    static Chord V(Note key){
+    static shared_ptr<Chord> V(NotePtr key){
         return Chord::dominant(key);
     }
     
-    static Chord V7(Note key){
+    static shared_ptr<Chord> V7(NotePtr key){
         return Chord::dominant7(key);
     }
     
-    static Chord vi(Note key){
+    static shared_ptr<Chord> vi(NotePtr key){
         return Chord::submediant(key);
     }
     
-    static Chord VI(Note key){
+    static shared_ptr<Chord> VI(NotePtr key){
         return Chord::submediant(key);
     }
     
-    static Chord vi7(Note key){
+    static shared_ptr<Chord> vi7(NotePtr key){
         return Chord::submediant7(key);
     }
     
-    static Chord VI7(Note key){
-        return Chord::submediant7(key);
+    static shared_ptr<Chord> VI7(NotePtr key){
+        NotePtr transKey = Interval::sixth(key, key);
+        return Chord::dominantSeventh(transKey);
+        //return Chord::submediant7(key);
     }
     
-    static Chord bvii(Note key){
+    static shared_ptr<Chord> bvii(NotePtr key){
         return Chord::subtonic(key);
     }
     
-    static Chord bVII(Note key){
+    static shared_ptr<Chord> bVII(NotePtr key){
         return Chord::subtonic(key);
     }
     
     
-    static Chord vii(Note key){
+    static shared_ptr<Chord> vii(NotePtr key){
         return Chord::leadingtone(key);
     }
     
-    static Chord VII(Note key){
+    static shared_ptr<Chord> VII(NotePtr key){
         return Chord::leadingtone(key);
     }
     
     
-    static Chord bvii7(Note key){
+    static shared_ptr<Chord> bvii7(NotePtr key){
         return Chord::subtonic7(key);//was subtonic in Mingus...why?
     }
     
-    static Chord bVII7(Note key){
+    static shared_ptr<Chord> bVII7(NotePtr key){
         return Chord::subtonic7(key);
     }
     
-    static Chord vii7(Note key){
+    static shared_ptr<Chord> vii7(NotePtr key){
         return Chord::leadingtone7(key);
     }
     
-    static Chord VII7(Note key){
-        return Chord::leadingtone7(key);
+    static shared_ptr<Chord> VII7(NotePtr key){
+        NotePtr transKey = Interval::seventh(key, key);
+        return Chord::dominantSeventh(transKey);
+        //return Chord::leadingtone7(key);
     }
 
     
@@ -1622,33 +2009,55 @@ class Chord {
     
     
     
-/*===================================================================
- 	Inversions
-===================================================================*/
+//===================================================================
+#pragma mark -	 	Inversions
+//===================================================================
+
+    /*
+    Root position
+    */
     
+    static shared_ptr<Chord> rootPosition(shared_ptr<Chord> chord){
+        shared_ptr<Chord> newCopy = Chord::create(chord->getName());
+        return newCopy;
+    }
+    
+    shared_ptr<Chord> rootPosition(){
+        shared_ptr<Chord> newCopy = Chord::create(getName());
+        return newCopy;
+    }
+    
+    /*
+    This return a copy
+    */
+    shared_ptr<Chord> invert(){
+        shared_ptr<Chord> c = copy();
+        return Chord::invert(c);
+    }
+
     /*
      Inverts a given chord one time
      Returns a copy
      */
-    static Chord invert(Chord chord){
-        Chord inv(chord);
-        Chord::invert(inv.notes);
+    static shared_ptr<Chord> invert(shared_ptr<Chord> chord){
+        shared_ptr<Chord> inv = chord->copy();
+        Chord::invert(inv->notes);
         return inv;
     }
     
     /*
      This does not return a copy
      */
-    static void invert(deque<Note> &chord){
-        chord.push_front(chord[chord.size()-1]);
-        chord.pop_back();
+    static void invert(deque<NotePtr> &notes){
+        notes.push_back(notes.front()->getOctaveUp());
+        notes.pop_front();
     }
     
     /*
     The first inversion of a chord
     */
     
-    static Chord firstInversion(Chord chord){
+    static shared_ptr<Chord> firstInversion(shared_ptr<Chord> chord){
         return Chord::invert(chord);
     }
     
@@ -1657,28 +2066,326 @@ class Chord {
     /*
      The second inversion of a chord
      */
-    static Chord secondInversion(Chord chord){    
+    static shared_ptr<Chord> secondInversion(shared_ptr<Chord> chord){
         return Chord::invert(Chord::invert(chord));
     }
     
     /*
      The third inversion of a chord
      */
-    static Chord thirdInversion(Chord chord){
-        return Chord::invert(Chord::invert(Chord::invert(chord)));
+    static shared_ptr<Chord> thirdInversion(shared_ptr<Chord> chord){
+        return Chord::invert(Chord::secondInversion(chord));
+    }
+    
+    
+    /*
+     The fourth inversion of a chord
+     */
+    static shared_ptr<Chord> fourthInversion(shared_ptr<Chord> chord){
+        return Chord::invert(Chord::thirdInversion(chord));
     }
     
     
     
+    /*
+     The fifth inversion of a chord
+     */
+    static shared_ptr<Chord> fifthInversion(shared_ptr<Chord> chord){
+        return Chord::invert(Chord::fourthInversion(chord));
+    }
     
     
+//===================================================================
+#pragma mark -	 	Utils
+//===================================================================
+   
+   /*
+   Useful for voice leading, keeping chord progressions dense.
+   Iterate through other chord notes to find notes at least distance to middle of this range.
+   Returns a copy.
+   */
+   
+   static shared_ptr<Chord> findNearestVoicing(shared_ptr<Chord> thisChord,shared_ptr<Chord> chordToTransform){
+        if(!thisChord->isValid() || !chordToTransform->isValid()){
+            return chordToTransform;
+        }
+        int topNote = thisChord->notes.back()->getInt();
+        int bottomNote = thisChord->notes.front()->getInt();
+        
+        
+        
+        int mid = (bottomNote+topNote)/2;
+        
+        shared_ptr<Chord>chordCopy = chordToTransform->copy();
+        deque<NotePtr>orgNotes = chordCopy->notes;
+        chordCopy->notes.clear();
+        
+        for(NotePtr n:orgNotes){
+            int currDist = n->getInt()-mid;
+            if(currDist>0){
+                //above
+                int octDownDist = ABS(n->getOctaveDown()->getInt()-mid);
+                bool cont = true;
+                while(octDownDist<currDist && cont){
+                    currDist = n->getInt()-mid;
+                    n->octaveDown();
+                    octDownDist = ABS(n->getInt()-mid);
+                    if(octDownDist>=currDist){
+                        //doesn't make a difference or same
+                        n->octaveUp();
+                        cont = false;
+                   }
+                }
+            }else{
+                //below, pitch up
+                int octUpDist = ABS(n->getOctaveUp()->getInt()-mid);
+                bool cont = true;
+                while(octUpDist<currDist && cont){
+                    currDist = n->getInt()-mid;
+                    n->octaveUp();
+                    octUpDist = ABS(n->getInt()-mid);
+                    if(octUpDist>=currDist){
+                        //doesn't make a difference or same
+                        n->octaveDown();
+                        cont = false;
+                   }
+                }
+            }
+            
+            chordCopy->notes.push_back(n);
+            
+            Chord::sortNotesOnPitch(chordCopy);
+            
+        }
+        return chordCopy;
+    }
     
+
+   /*
+   Useful for voice leading, keeping chord progressions dense.
+   Iterate through other chord notes to find notes at least distance to this note, ie. 
+   centering around this note.
+   Returns a copy.
+   */
+   
+   static shared_ptr<Chord> findNearestVoicing(shared_ptr<Chord> chordToTransform,shared_ptr<Note> note){
+        if(!chordToTransform->isValid()){
+            return chordToTransform;
+        }
+        int mid = note->getInt();;
+        
+        shared_ptr<Chord>chordCopy = chordToTransform->copy();
+        deque<NotePtr>orgNotes = chordCopy->notes;
+        chordCopy->notes.clear();
+        
+        for(NotePtr n:orgNotes){
+            int currDist = n->getInt()-mid;
+            if(currDist>0){
+                //above
+                int octDownDist = ABS(n->getOctaveDown()->getInt()-mid);
+                bool cont = true;
+                while(octDownDist<currDist && cont){
+                    currDist = n->getInt()-mid;
+                    n->octaveDown();
+                    octDownDist = ABS(n->getInt()-mid);
+                    if(octDownDist>=currDist){
+                        //doesn't make a difference or same
+                        n->octaveUp();
+                        cont = false;
+                   }
+                }
+            }else{
+                //below, pitch up
+                int octUpDist = ABS(n->getOctaveUp()->getInt()-mid);
+                bool cont = true;
+                while(octUpDist<currDist && cont){
+                    currDist = n->getInt()-mid;
+                    n->octaveUp();
+                    octUpDist = ABS(n->getInt()-mid);
+                    if(octUpDist>=currDist){
+                        //doesn't make a difference or same
+                        n->octaveDown();
+                        cont = false;
+                   }
+                }
+            }
+            
+            chordCopy->notes.push_back(n);
+            
+            
+            Chord::sortNotesOnPitch(chordCopy);
+            
+        }
+        return chordCopy;
+    }
     
+ 
+   /*
+   Useful for voice leading & chord melodies.
+   Iterate through other chord notes to find notes at least distance below this note.
+   If okToOverlap will not let any note duplicate, but will pitch down an octave.
+   Returns a copy.
+    */
+   
+   static shared_ptr<Chord> findNearestVoicingBelow(shared_ptr<Chord> chordToTransform,shared_ptr<Note> note, bool okToOverlap = true){
+         if(!chordToTransform->isValid()){
+            return chordToTransform;
+        }
+        int mid = note->getInt();;
+        
+        shared_ptr<Chord>chordCopy = chordToTransform->copy();
+        deque<NotePtr>orgNotes = chordCopy->notes;
+        chordCopy->notes.clear();
+        
+        for(NotePtr n:orgNotes){
+            int currDist = n->getInt()-mid;
+            if(currDist>0){
+                //above
+                while(n->getOctaveDown()->getInt()>=mid){
+                    n->octaveDown();
+                    
+                    if(n->getInt() == mid && !okToOverlap){
+                        n->octaveDown();
+                   }
+                }
+            }else if(currDist<0){
+                //below, pitch up
+                while(n->getOctaveUp()->getInt()<=mid){
+                    n->octaveUp();
+                    if(n->getInt() == mid && !okToOverlap){
+                        n->octaveDown();
+                   }
+                }
+            }else if(!okToOverlap){
+                //same note
+                n->octaveDown();
+            }
+            
+            chordCopy->notes.push_back(n);
+            
+
+            Chord::sortNotesOnPitch(chordCopy);
+            
+        }
+        return chordCopy;
+    }
     
+
+
+   /*
+   Useful for voice leading & chord melodies
+   Iterate through other chord notes to find notes at least distance above this note.
+   If okToOverlap will not let any note duplicate, but will pitch up an octave.
+   Returns a copy.
+    */
+   
+   static shared_ptr<Chord> findNearestVoicingAbove(shared_ptr<Chord> chordToTransform,shared_ptr<Note> note, bool okToOverlap = true){
+        if(!chordToTransform->isValid()){
+            return chordToTransform;
+        }
+        int mid = note->getInt();
+        
+        shared_ptr<Chord>chordCopy = chordToTransform->copy();
+        deque<NotePtr>orgNotes = chordCopy->notes;
+        chordCopy->notes.clear();
+        
+        for(NotePtr n:orgNotes){
+            int currDist = n->getInt()-mid;
+            if(currDist>0){
+                //above
+                while(n->getOctaveDown()->getInt()>=mid){
+                    n->octaveDown();
+                    
+                    if(n->getInt() == mid && !okToOverlap){
+                        n->octaveUp();
+                   }
+                }
+            }else if(currDist<0){
+                //below, pitch up
+                while(n->getOctaveDown()->getInt()<=mid){
+                    n->octaveUp();
+                    if(n->getInt() == mid && !okToOverlap){
+                        n->octaveUp();
+                   }
+                }
+            }else if(!okToOverlap){
+                //same note
+                n->octaveUp();
+            }
+            
+            chordCopy->notes.push_back(n);
+            
+            Chord::sortNotesOnPitch(chordCopy);
+        }
+        return chordCopy;
+    }
     
-/*===================================================================
- 	Other
-===================================================================*/
+
+   /*
+   Move up/down octaves without changing voicing
+   Returns a copy.
+   */
+   
+   static shared_ptr<Chord> findNearestTransposition(shared_ptr<Chord> chordToTransform,shared_ptr<Note> note){
+        if(!chordToTransform->isValid()){
+            return chordToTransform;
+        }
+        
+        int centre = note->getInt();;
+        
+        shared_ptr<Chord>chordCopy = chordToTransform->copy();
+        
+        int mid = (chordCopy->notes.front()->getInt()+chordCopy->notes.back()->getInt())/2;
+        
+        
+        int currDist = mid-centre;
+        if(currDist>0){
+            //above
+            int octDownDist = ABS((mid-12)-centre);
+            bool cont = true;
+            while(octDownDist<currDist && cont){
+                currDist = mid-centre;
+                chordCopy->octaveDown();
+                mid = (chordCopy->notes.front()->getInt()+chordCopy->notes.back()->getInt())/2;
+                octDownDist = ABS(mid-centre);
+                if(octDownDist>=currDist){
+                    //doesn't make a difference or same
+                    chordCopy->octaveUp();
+                    cont = false;
+                }
+            }
+        }else{
+            //below, pitch up
+            int octUpDist = ABS((mid+12)-centre);
+            bool cont = true;
+            while(octUpDist<currDist && cont){
+                currDist = mid-centre;
+                chordCopy->octaveUp();
+                mid = (chordCopy->notes.front()->getInt()+chordCopy->notes.back()->getInt())/2;
+                octUpDist = ABS(mid-centre);
+                if(octUpDist>=currDist){
+                    //doesn't make a difference or same
+                    chordCopy->octaveDown();
+                    cont = false;
+               }
+            }
+        }
+        
+        
+        return chordCopy;
+    }
+    
+
+    static void sortNotesOnPitch(shared_ptr<Chord>chord){
+        sort(chord->notes.begin(),chord->notes.end(),Note::comparePtr);
+    }
+
+
+
+    
+//===================================================================
+#pragma mark -	 	Other
+//===================================================================
     
     
     /*
@@ -1719,18 +2426,18 @@ class Chord {
      */
     //alias
     //Accepts C13
-    static Chord getChordFromString(string shorthand_string){
+    static shared_ptr<Chord> getChordFromString(string shorthand_string){
         return Chord::fromShorthand(shorthand_string);
     }
     //accepts 13 Note("C")
-    static Chord getChordFromString(string shorthand_string,Note note){
+    static shared_ptr<Chord> getChordFromString(string shorthand_string,NotePtr note){
         return Chord::chordFromShorthand(shorthand_string,note);
     }
     
         
         
     //the python version of this is rubbish
-    static Chord fromShorthand(string shorthand_string){
+    static shared_ptr<Chord> fromShorthand(string shorthand_string){
         //Shrink shorthand_string to a format recognised by chord_shorthand
         ofStringReplace(shorthand_string, "min", "m");
         ofStringReplace(shorthand_string, "mi", "m");
@@ -1754,60 +2461,57 @@ class Chord {
         }
 
         string name = Chord::getRootNote(top);
-        Note note(name); 
+        NotePtr note = Note::create(name);
         string chordSymbol = Chord::getChordSymbol(top);
         
         //this retrives the actual notes
 
-        Chord chord = Chord::chordFromShorthand(chordSymbol,note);
-        chord.name = chordSymbol;
-        chord.setRoot(note);
+        shared_ptr<Chord> chord = Chord::chordFromShorthand(chordSymbol,note);
+        //cout<<"::fromShorthand chordSymbol "<<chordSymbol<<" "<<chord->getName()<<endl;
+        //Chord::print(chord->notes);
+        chord->name = chordSymbol;
+        chord->setRoot(note);
         
         if(poly.size()==2){
             //get polychord
             string name = Chord::getRootNote(poly[1]);
-            Note note(name);
+            NotePtr note = NotePtr(new Note(name));
             string chordSymbol = Chord::getChordSymbol(poly[1]);//was top?
+            shared_ptr<Chord> chord2 = Chord::chordFromShorthand(chordSymbol,note);
+            shared_ptr<Chord> subchord = Chord::create();
             
-            Chord chord2 = Chord::chordFromShorthand(chordSymbol,note);
-            
-            
-            Chord subchord;
-            
-            subchord.name = chordSymbol;
-            subchord.notes = chord.notes;
-            subchord.setRoot(note);
-            
-            chord.setPolyChord(subchord);
+            subchord->name = chordSymbol;
+            subchord->notes = chord->notes;
+            subchord->setRoot(note);
+            chord->setPolyChord(subchord);
             
             /*
             ofPtr<Chord> subchord(new Chord());
             subchord->name = chordSymbol;
-            subchord->notes = chord.notes;
+            subchord->notes = chord->notes;
             subchord->setRoot(note);
             
             chord.polychords.push_back(subchord);
             */
             //no longer appending these...get all notes by calling getAllNotes
-            //chord.notes.insert(chord.notes.begin(), chord2.notes.begin(),chord2.notes.end());
+            //chord->notes.insert(chord->notes.begin(), chord2.notes.begin(),chord2.notes.end());
             
         }else if(slash.size()==2){
             //add bass from slash chord..needs to be checked for format
-            Note bass(slash[1]);
-            //bass.octaveDown();
+            NotePtr bass = NotePtr(new Note(slash[1]));
             
-            chord.setBass(bass);
+            chord->setBass(bass);
             
             /*
-            bass.octave = chord.notes[0].getOctaveDown().octave;
+            bass.octave = chord->notes[0].getOctaveDown().octave;
             bass.octaveDown();//arbitrary hack ha ha
-            chord.notes.push_front(bass);
+            chord->notes.push_front(bass);
              */
-        }else{
+        }else if(chord->notes.size()){
             //adding bass note here...a bit arbitrarily
-           // chord.notes.push_front(chord.notes[0].getOctaveDown());
+           // chord->notes.push_front(chord->notes[0].getOctaveDown());
             
-            chord.setBass(chord.notes[0]);
+            //chord->setBass(chord->notes[0]);
         }
         
         
@@ -1816,7 +2520,23 @@ class Chord {
          
     }
     
-    
+    static vector<string> determineDiad(deque<NotePtr> diad, bool shorthand = false, bool allowInversions = true){
+       vector<string> inversions;
+        if (diad.size() != 2){
+            ofLog()<<"warning: raise exception: not a diad";
+            return inversions;
+        }
+        
+        string intervalName = Interval::determine(diad[0], diad[1],shorthand);
+        
+        inversions.push_back(diad[0]->getName()+ intervalName);
+        
+        if(allowInversions){
+            intervalName = Interval::determine(diad[1], diad[0],shorthand);
+            inversions.push_back(diad[1]->getName()+ intervalName);
+        }
+        return inversions;
+    }
         
     /*
      Names the triad. Returns answers in a list. The third argument should \
@@ -1836,7 +2556,7 @@ class Chord {
     
      */
     
-   static vector<string> determineTriad(deque<Note> triad, bool shorthand = false, bool allowInversions = true){
+   static vector<string> determineTriad(deque<NotePtr> triad, bool shorthand = false, bool allowInversions = true){
 
        //the functions required sorted list I think
        //sort(triad.begin(),triad.end(),Note::compare);
@@ -1863,7 +2583,7 @@ class Chord {
      */
 
     
-    static vector<string>  determineSeventh(deque<Note> chord, bool shorthand = false, bool allowInversions = true, bool allowPolychords = true){
+    static vector<string>  determineSeventh(deque<NotePtr> chord, bool shorthand = false, bool allowInversions = true, bool allowPolychords = true){
         
         
         //the functions required sorted list I think
@@ -1896,7 +2616,7 @@ class Chord {
      */
     
     
-    static vector<string>  determineExtended5Chord(deque<Note> chord, bool shorthand = false, bool allowInversions = true, bool allowPolychords = true){
+    static vector<string>  determineExtended5Chord(deque<NotePtr> chord, bool shorthand = false, bool allowInversions = true, bool allowPolychords = true){
 	
         //the functions required sorted list I think
         //sort(chord.begin(),chord.end(),Note::compare);
@@ -1924,7 +2644,7 @@ class Chord {
      */
 
     
-    static vector<string>  determineExtended6Chord(deque<Note> chord, bool shorthand = false, bool allowInversions = true, bool allowPolychords = true){
+    static vector<string>  determineExtended6Chord(deque<NotePtr> chord, bool shorthand = false, bool allowInversions = true, bool allowPolychords = true){
 
         //the functions required sorted list I think
         //sort(chord.begin(),chord.end(),Note::compare);
@@ -1945,7 +2665,7 @@ class Chord {
     }
     
         
-    static vector<string>  determineExtended7Chord(deque<Note> chord, bool shorthand = false, bool allowInversions = true, bool allowPolychords = true){
+    static vector<string>  determineExtended7Chord(deque<NotePtr> chord, bool shorthand = false, bool allowInversions = true, bool allowPolychords = true){
        
         
         
@@ -1980,7 +2700,7 @@ class Chord {
      */
     
     
-    static vector<string>  determinePolychords(deque<Note> chord, bool shorthand = false, bool allowInversions = true){
+    static vector<string>  determinePolychords(deque<NotePtr> chord, bool shorthand = false, bool allowInversions = true){
 	    
   
         //the functions required sorted list I think
@@ -1998,23 +2718,22 @@ class Chord {
     
     
         
-/*===================================================================
-	Chord recognition
-===================================================================*/
+//===================================================================
+#pragma mark -		Chord recognition
+//===================================================================
     
     /*
      Names a chord. Can determine almost every chord, from a simple triad to a fourteen note polychord.
      */
     
-    static vector<string>  determine(deque<Note> chord, bool shorthand = false, bool allowInversions = true, bool allowPolychords = false){
+    static vector<string>  determine(deque<NotePtr> chord, bool shorthand = false, bool allowInversions = true, bool allowPolychords = false){
         //cout<<"Chord::determine"<<endl;
         vector<string> str;
 	
         if (chord.size()<2){
             return str;
         }else if(chord.size()==2){
-            str.push_back(Interval::determine(chord[0], chord[1]));
-            return str;
+            return Chord::determineDiad(chord, shorthand, allowInversions);
         }else if(chord.size() == 3){
             return Chord::determineTriad(chord, shorthand, allowInversions);
         }else if(chord.size() == 4){
@@ -2053,228 +2772,186 @@ class Chord {
      Alias
      */
     
-    static vector<string>  analyse(deque<Note> chord, bool shorthand = false, bool allowInversions = true, bool allowPolychords = false){
+    static vector<string>  analyse(deque<NotePtr> chord, bool shorthand = false, bool allowInversions = true, bool allowPolychords = false){
         return Chord::determine(chord, shorthand,allowInversions,allowPolychords);
     }
     
     
+
+
+
+    /*
+     Return eg. Eb# from Eb#Maj7
+     */
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-        /*
-         Return eg. Eb# from Eb#Maj7
-         */
-        
-        static string getRootNote(string chordname){
-            string root = chordname.substr(0,1);
-            bool end = false;//chord name begin
-            string sign;
-            for(int i=1;i<chordname.size() && !end ;i++){
-                sign  = chordname.substr(i,1);
-                if(sign == "#" || sign == "b"){
-                    root+=sign;
-                }else{
-                    end=true;
-                }
+    static string getRootNote(string chordname){
+        string root = chordname.substr(0,1);
+        bool end = false;//chord name begin
+        string sign;
+        for(int i=1;i<chordname.size() && !end ;i++){
+            sign  = chordname.substr(i,1);
+            if(sign == "#" || sign == "b"){
+                root+=sign;
+            }else{
+                end=true;
             }
-            return root;
         }
+        return root;
+    }
+    
+    /*
+     Return eg. Maj7 from Eb#Maj7/D
+     */
+    static string getChordSymbol(string chordname){
+        if(chordname.size()==0){
+            return "";
+        }
+        //cout<<"Chord::getChordSymbol "<<chordname<<endl;
+        chordname = ofSplitString(chordname, "/")[0];//if different bass
+        int augs = ofStringTimesInString(chordname, "#");
+        int dims = ofStringTimesInString(chordname, "b");
         
-        /*
-         Return eg. Maj7 from Eb#Maj7/D
-         */
-        static string getChordSymbol(string chordname){
-            if(chordname.size()==0){
-                return "";
+        if((chordname.size()-augs-dims)==1){
+            return "";//just triad
+        }
+        string sign;
+        for(int i=1;i<chordname.size();i++){
+            sign  = chordname.at(i);
+            if(sign != "#" && sign != "b"){
+                return chordname.substr(i);
             }
-            //cout<<"Chord::getChordSymbol "<<chordname<<endl;
-            chordname = ofSplitString(chordname, "/")[0];//if different bass
-            int augs = Utils::occurenceNum(chordname,"#");
-            int dims = Utils::occurenceNum(chordname,"b");
             
-            if((chordname.size()-augs-dims)==1){
-                return "";//just triad
-            }
-            string sign;
-            for(int i=1;i<chordname.size();i++){
-                sign  = chordname.at(i);
-                if(sign != "#" && sign != "b"){
-                    return chordname.substr(i);
-                }
-                
-            }
         }
+    }
     
+//===================================================================
+#pragma mark -		Function hash map
+//===================================================================
         /*
          This accepts chord symbols without root note, eg. aug, or dim7
-         
-         //TODO: Turn into function pointer lookup
          */
         
-        static Chord chordFromShorthand(string c,Note note){
-           
-            if(c== "m"){
-               return Chord::minorTriad(note);
-            }else if(c== "M"){
-                return Chord::majorTriad(note);
-            }else if(c== ""){
-                return Chord::majorTriad(note);
-            }
-            else if(c== "dim"){
-                return Chord::diminishedTriad(note);
-            }
-            //Augmented chords
-            else if(c== "aug" || c=="+"){
-                return Chord::augmentedTriad(note);
-            }
-            else if(c== "7#5"  || c== "m7+5"){
-                return Chord::augmentedMinorSeventh(note);
-            }
-            else if(c== "M7+" || c== "M7+5"|| c== "7+"){
-                return Chord::augmentedMajorSeventh(note);
-            }
+        static shared_ptr<Chord> chordFromShorthand(string c,NotePtr note){
+            static ChordShorthandFuncLookup  _chordFuncLookup = {
+            {"m",&Chord::minorTriad},
+            {"M",&Chord::majorTriad},
+            {"",&Chord::majorTriad},
+            {"dim",&Chord::diminishedTriad},
             
+            //Augmented chords
+            {"aug",&Chord::augmentedTriad},
+            {"+",&Chord::augmentedTriad},
+            
+            {"m7+5",&Chord::augmentedMinorSeventh},//twin peaks
+            {"m7#5",&Chord::augmentedMinorSeventh},
+            
+            {"M7+",&Chord::augmentedMajorSeventh},
+            {"M7+5",&Chord::augmentedMajorSeventh},
+            
+            {"7+",&Chord::augmentedDominantSeventh},
+            {"7#5",&Chord::augmentedDominantSeventh},
+            
+            {"7#5#9",&Chord::augmentedDominantSharpNinth},
+            {"7+#9",&Chord::augmentedDominantSharpNinth},
+            {"7#9#5",&Chord::augmentedDominantSharpNinth},
+       
+        
+        
             
             // Suspended chords
             
-            else if(c== "sus47"){
-                return Chord::suspendedSeventh(note);
-            }
-            else if(c== "sus4"){
-                return Chord::suspendedFourthTriad(note);
-            }
-            else if(c== "sus2"){
-                return Chord::suspendedSecondTriad(note);
-            }
-            else if(c== "sus"){
-                return Chord::suspendedTriad(note);
-            }
-            else if(c== "11"){
-                return Chord::eleventh(note);
-            }
-            else if(c== "sus4b9" || c== "susb9"){
-                return Chord::suspendedFourthNinth(note);
-            }
+            {"sus47",&Chord::suspendedSeventh},
+            {"sus4",&Chord::suspendedFourthTriad},
+            {"sus2",&Chord::suspendedSecondTriad},
+            {"sus",&Chord::suspendedTriad},
+            {"11",&Chord::eleventh},
+            {"sus4b9",&Chord::suspendedFourthNinth},
+            {"susb9",&Chord::suspendedFourthNinth},
 
             
             //Sevenths
-            else if(c== "m7"){
-                return Chord::minorSeventh(note);
-            }
-            else if(c== "M7"){
-                return Chord::majorSeventh(note);
-            }
-            else if(c== "7" || c=="dom7"){
-                return Chord::dominantSeventh(note);
-            }
-            else if(c== "m7b5"){
-                return Chord::minorSeventhFlatFive(note);
-            }
-            else if(c== "dim7"){
-                return Chord::diminishedSeventh(note);
-            }
-            else if(c== "m/M7" || c=="mM7"){
-                return Chord::minorMajorSeventh(note);
-            }
+            {"m7",&Chord::minorSeventh},
+            {"M7",&Chord::majorSeventh},
+            {"Maj7",&Chord::majorSeventh},
+            {"7",&Chord::dominantSeventh},
+            {"dom7",Chord::dominantSeventh},
+            {"m7b5",&Chord::minorSeventhFlatFive},
+            {"dim7",&Chord::diminishedSeventh},
+            {"m/M7",&Chord::minorMajorSeventh},
+            {"mM7",Chord::minorMajorSeventh},
 
             
             
             //Sixths
-            else if(c== "m6"){
-                return Chord::minorSixth(note);
-            }
-            else if(c== "M6" || c== "6"){
-                return Chord::majorSixth(note);
-            }
-            else if(c== "6/7" || c== "67"){
-                return Chord::dominantSixth(note);
-            }
-            else if(c== "6/9" || c== "69"){
-                return Chord::sixthNith(note);
-            }
+            {"m6",&Chord::minorSixth},
+            {"M6",&Chord::majorSixth},
+            {"6",&Chord::majorSixth},
+            {"Maj6",&Chord::majorSixth},
+            {"6/7",&Chord::dominantSixth},
+            {"67",&Chord::dominantSixth},
+            {"6/9",&Chord::sixthNith},
+            {"69",&Chord::sixthNith},
+            
             
             
             //Ninths
-            else if(c== "9"){
-                return Chord::dominantNinth(note);
-            }
-            else if(c== "7b9"){
-                return Chord::dominantFlatNinth(note);
-            }
-            else if(c== "7#9"){
-                return Chord::dominantSharpNinth(note);
-            }
-            else if(c== "M9"){
-                return Chord::majorNinth(note);
-            }
-            else if(c== "m9"){
-                return Chord::minorNinth(note);
-            }
+            {"9",&Chord::dominantNinth},
+            {"7b9",&Chord::dominantFlatNinth},
+            {"7#9",&Chord::dominantSharpNinth},
+            {"M9",&Chord::majorNinth},
+            {"Maj9",&Chord::majorNinth},
+            {"m9",&Chord::minorNinth},
+            {"m9b5",&Chord::halfDiminishedNinth},
            
             
             //Elevenths
-            else if(c== "7#11"){
-                return Chord::lydianDominantSeventh(note);
-            }
-            else if(c== "m11"){
-                return Chord::minorEleventh(note);
-            }
+            {"7#11",&Chord::lydianDominantSeventh},//mixolydian raised 4
+            {"9#11",&Chord::lydianDominantNinth},
+            {"m11",&Chord::minorEleventh},
+            {"m11b5",&Chord::halfDiminishedEleventh},
+            {"m9/11",&Chord::minorNinthEleventh},
+            {"M7#11",&Chord::lydianMajorSeventh},
+
 
             
             //Thirteenths
-            else if(c== "M13"){
-                return Chord::majorThirteenth(note);
-            }
-            else if(c== "m13"){
-                return Chord::minorThirteenth(note);
-            }
-            else if(c== "13"){
-                return Chord::dominantThirteenth(note);
-            }
-       
+            {"M13",&Chord::majorThirteenth},
+            {"Maj13",&Chord::majorThirteenth},
+            {"m13",&Chord::minorThirteenth},
+            {"13",&Chord::dominantThirteenth},
             
             //Altered Chords
-            else if(c== "7b5"){
-                return Chord::dominantFlatFive(note);
-            }
-
+            {"7b5",&Chord::dominantFlatFive},
+            {"7#9b13",&Chord::dominantSharpNineFlatThirteen},
+            
+            {"5",&Chord::powerChord},
             
             //Special
-            else if(c== "hendrix" || c=="7b12"){
-                return Chord::hendrixChord(note);
+            {"hendrix",&Chord::hendrixChord},
+            {"7b12",&Chord::hendrixChord}
+            
+            };
+            
+            
+            
+            if(_chordFuncLookup[c]){
+                return _chordFuncLookup[c](note);
             }else{
-                ofLog()<<"Warning: Chord abbr "<<c<<" not recognized"<<endl;
+                ofLog()<<"Warning: Chord abbr "<<note->getName()<<c<<" not recognized"<<endl;
+                return Chord::create();
             }
 
-            //"5" : (lambda x: [x, Interval.perfect_fifth(x)])
+//
+                //ofSystemAlertDialog("Chord::chordFromShorthand: Chord "+note->getName()+c+" not recognized");
             
-        }
+    }
     
+//===================================================================
+#pragma mark -		Convenience
+//===================================================================
+
     
-    //convenience
-    
-    static void print(deque<Note> notes){
-        
-        
+    static void print(deque<NotePtr> notes){
         cout <<"[ ";
         for(int i = 0;i<notes.size();i++){
             cout<<notes[i];
@@ -2287,7 +2964,6 @@ class Chord {
     
     
     static void print(vector<string> symbols){
-        
         cout <<"[ ";
         for(int i = 0;i<symbols.size();i++){
             cout<<symbols[i];
@@ -2296,13 +2972,16 @@ class Chord {
             }
         }
         cout<<" ]"<<endl;
-        
-       
     }
     
     void print(){
         cout <<this;
     }
+    
+
+//===================================================================
+#pragma mark -		PRIVATE METHODS
+//===================================================================
     
     private:
         
@@ -2312,7 +2991,7 @@ class Chord {
      and saves the result.
      */
     
-    static void triadInversionExhauster(deque<Note> triad, bool shorthand,int tries, vector<string> *result,bool allowInversions){
+    static void triadInversionExhauster(deque<NotePtr> triad, bool shorthand,int tries, vector<string> *result,bool allowInversions){
         
         
         
@@ -2356,89 +3035,50 @@ class Chord {
         
         
         
-        int int1 = Interval::measure(Note(triad[0]), Note(triad[1]));
-        int int2 = Interval::measure(Note(triad[0]), Note(triad[2]));
+        int int1 = Interval::measure(triad[0], triad[1]);
+        int int2 = Interval::measure(triad[0], triad[2]);
 
         if (int1 == 2 && int2 == 7){
-            result->push_back("sus2,"+ofToString(tries)+ ","+ triad[0].name);
+            result->push_back("sus2,"+ofToString(tries)+ ","+ triad[0]->name);
         }else if(int1 == 4 && int2 == 10){
-            result->push_back("dom7,"+ofToString(tries)+ ","+ triad[0].name);
+            result->push_back("dom7,"+ofToString(tries)+ ","+ triad[0]->name);
         }else if( int1 == 4 && int2 == 6){
-            result->push_back("7b5,"+ofToString(tries)+ ","+ triad[0].name);
+            result->push_back("7b5,"+ofToString(tries)+ ","+ triad[0]->name);
         }else if( int1 == 4 && int2 == 7){
-            result->push_back("M,"+ofToString(tries)+ ","+ triad[0].name);
+            result->push_back("M,"+ofToString(tries)+ ","+ triad[0]->name);
         }else if(int1 == 4 && int2 == 8){
-            result->push_back("aug,"+ofToString(tries)+ ","+ triad[0].name);
+            result->push_back("aug,"+ofToString(tries)+ ","+ triad[0]->name);
         }else if(int1 == 4 && int2 == 4){
-            result->push_back("M6,"+ofToString(tries)+ ","+ triad[0].name);
+            result->push_back("M6,"+ofToString(tries)+ ","+ triad[0]->name);
         }else if(int1 == 4 && int2 == 11){
-            result->push_back("M7,"+ofToString(tries)+ ","+ triad[0].name);
+            result->push_back("M7,"+ofToString(tries)+ ","+ triad[0]->name);
         }else if(int1 == 3 && int2 == 6){
-            result->push_back("dim,"+ofToString(tries)+ ","+ triad[0].name);
+            result->push_back("dim,"+ofToString(tries)+ ","+ triad[0]->name);
         }else if(int1 == 3 && int2 == 7){
-            result->push_back("m,"+ofToString(tries)+ ","+ triad[0].name);
+            result->push_back("m,"+ofToString(tries)+ ","+ triad[0]->name);
         }else if(int1 == 3 && int2 == 9){
-            result->push_back("m6,"+ofToString(tries)+ ","+ triad[0].name);
+            result->push_back("m6,"+ofToString(tries)+ ","+ triad[0]->name);
         }else if(int1 == 3 && int2 == 10){
-            result->push_back("m7,"+ofToString(tries)+ ","+ triad[0].name);
+            result->push_back("m7,"+ofToString(tries)+ ","+ triad[0]->name);
         }else if(int1 == 3 && int2 == 11){
-            result->push_back("m/M7,"+ofToString(tries)+ ","+ triad[0].name);
+            result->push_back("m/M7,"+ofToString(tries)+ ","+ triad[0]->name);
         }else if(int1 == 5 && int2 == 7){
-            result->push_back("sus4,"+ofToString(tries)+ ","+ triad[0].name);
+            result->push_back("sus4,"+ofToString(tries)+ ","+ triad[0]->name);
         }else if(int1 == 7 && int2 == 10){
-            result->push_back("m7,"+ofToString(tries)+ ","+ triad[0].name);
+            result->push_back("m7,"+ofToString(tries)+ ","+ triad[0]->name);
         }else if(int1 == 7 && int2 == 11){
-            result->push_back("M7,"+ofToString(tries)+ ","+ triad[0].name);
+            result->push_back("M7,"+ofToString(tries)+ ","+ triad[0]->name);
         }
-        /*
+ 
         
         
-		string intval1 = Interval::determine(Note(triad[0]), Note(triad[1]), true);
-		string intval2 = Interval::determine(Note(triad[0]), Note(triad[2]), true);
-        
-		
-        
-		string intval = intval1 + intval2;
-        if (intval == "25"){
-            result->push_back("sus2,"+ofToString(tries)+ ","+ triad[0].name);
-        }else if( intval == "3b7"){
-            result->push_back("dom7,"+ofToString(tries)+ ","+ triad[0].name);
-        }else if( intval == "3b5"){
-            result->push_back("7b5,"+ofToString(tries)+ ","+ triad[0].name);
-        }else if( intval == "35"){
-            result->push_back("M,"+ofToString(tries)+ ","+ triad[0].name);
-        }else if( intval == "3#5"){
-            result->push_back("aug,"+ofToString(tries)+ ","+ triad[0].name);
-        }else if( intval == "36"){
-            result->push_back("M6,"+ofToString(tries)+ ","+ triad[0].name);
-        }else if( intval == "37"){
-            result->push_back("M7,"+ofToString(tries)+ ","+ triad[0].name);
-        }else if( intval == "b3b5"){
-            result->push_back("dim,"+ofToString(tries)+ ","+ triad[0].name);
-        }else if( intval == "b35"){
-            result->push_back("m,"+ofToString(tries)+ ","+ triad[0].name);
-        }else if( intval == "b36"){
-            result->push_back("m6,"+ofToString(tries)+ ","+ triad[0].name);
-        }else if( intval == "b3b7"){
-            result->push_back("m7,"+ofToString(tries)+ ","+ triad[0].name);
-        }else if( intval == "b37"){
-            result->push_back("m/M7,"+ofToString(tries)+ ","+ triad[0].name);
-        }else if( intval == "45"){
-            result->push_back("sus4,"+ofToString(tries)+ ","+ triad[0].name);
-        }else if( intval == "5b7"){
-            result->push_back("m7,"+ofToString(tries)+ ","+ triad[0].name);
-        }else if( intval == "57"){
-            result->push_back("M7,"+ofToString(tries)+ ","+ triad[0].name);
-        }
-         
-         */
          
         if(tries != 3 && allowInversions){
             Chord::invert(triad);
             Chord::triadInversionExhauster(triad, shorthand,tries + 1, result,allowInversions);
-            return;
-        }else{
-            //return in right format
+        } else{
+        
+             //return in right format
             int rearrange = result->size();
             for(int r=0;r<rearrange;r++){
                 vector<string> split = ofSplitString((*result)[r], ",");
@@ -2463,14 +3103,10 @@ class Chord {
     
     
     
-    static void seventhInversionExhauster(deque<Note> seventh, bool shorthand,int tries, vector<string> *result,bool allowInversions){
-    
-    
-        
-    
+    static void seventhInversionExhauster(deque<NotePtr> seventh, bool shorthand,int tries, vector<string> *result,bool allowInversions){
         // Check whether the first three notes of seventh
         //are part of some triad.
-        deque<Note> sub;
+        deque<NotePtr> sub;
         sub.insert(sub.begin(),seventh.begin(),seventh.begin()+3);
         
         //not sure why no inversions here
@@ -2506,10 +3142,10 @@ class Chord {
             string root = Chord::getRootNote(triads[i]);
             
             //Get the interval between the first and last note
-            string intval3 = Interval::determine(Note(root), seventh[3]);
+            string intval3 = Interval::determine(Note::create(root), seventh[3]);
             
             
-            int int1 = Interval::measure(Note(root), seventh[3]);
+            int int1 = Interval::measure(Note::create(root), seventh[3]);
 
             if(chStr == "m"){
                 if(int1 == 10){
@@ -2532,7 +3168,7 @@ class Chord {
                 
                 if( int1 == 10){
                     result->push_back("m7b5,"+ofToString(tries)+ ","+ root);
-                }else if(intval3 == "diminished seventh"){
+                }else if(intval3 == "diminished seventh" || intval3 == "major sixth"){
                     //not sure how to make this int
                     result->push_back("dim7,"+ofToString(tries)+ ","+ root);
                 }
@@ -2561,59 +3197,8 @@ class Chord {
                     result->push_back("7b5,"+ofToString(tries)+ ","+root);
                 }
             }
-          //cout<<triads.size()<<" intval3 "<<intval3<<endl;
-        
-            /*
-            if(chStr == "m"){
-                if(intval3 == "minor seventh"){
-                    result->push_back("m7,"+ofToString(tries)+ ","+ root);
-                }else if( intval3 == "major seventh"){
-                    result->push_back("m/M7,"+ofToString(tries)+ ","+ root);
-                }else if( intval3 == "major sixth"){
-                    result->push_back("m6,"+ofToString(tries)+ ","+ root);
-                }
-            }else if( chStr == "M"){
-             
-                if( intval3 == "major seventh"){
-                    result->push_back("M7,"+ofToString(tries)+ ","+ root);
-                }else if(intval3 == "minor seventh"){
-                    result->push_back("7,"+ofToString(tries)+ ","+ root);
-                }else if(intval3 == "major sixth"){
-                    result->push_back("M6,"+ofToString(tries)+ ","+ root);
-                }
-            }else if(chStr == "dim"){
-             
-                if( intval3 == "minor seventh"){
-                    result->push_back("m7b5,"+ofToString(tries)+ ","+ root);
-                }else if(intval3 == "diminished seventh"){
-                        result->push_back("dim7,"+ofToString(tries)+ ","+ root);
-                }
-            }else if(chStr == "aug"){
-             
-                if (intval3 == "minor seventh"){
-                    result->push_back("m7+,"+ofToString(tries)+ ","+ root);
-                }
-                if(intval3 == "major seventh"){
-                        result->push_back("M7+,"+ofToString(tries)+ ","+ root);
-                }
-            }else if(chStr == "sus4"){
-             
-                if(intval3 == "minor seventh"){
-                    result->push_back("sus47,"+ofToString(tries)+ ","+ root);
-                }else if(intval3 == "minor second"){
-                    result->push_back("sus4b9,"+ofToString(tries)+ ","+ root);
-                }
-                //Other
-            }else if(chStr == "m7"){
-                if( intval3 == "perfect fourth"){
-                    result->push_back("11,"+ofToString(tries)+ ","+ root);
-                }
-            }else if(chStr == "7b5"){
-                if( intval3 == "minor seventh"){
-                    result->push_back("7b5,"+ofToString(tries)+ ","+root);
-                }
-             }
-             */
+
+
         }
     
         //Loop until we have exhausted all the inversions
@@ -2651,10 +3236,10 @@ class Chord {
     
     
     
-    static void chord5InversionExhauster(deque<Note> chord, bool shorthand,int tries, vector<string> *result,bool allowInversions){
+    static void chord5InversionExhauster(deque<NotePtr> chord, bool shorthand,int tries, vector<string> *result,bool allowInversions){
     
     
-        deque<Note> sub;
+        deque<NotePtr> sub;
         sub.insert(sub.begin(),chord.begin(),chord.begin()+3);
         vector<string> triads = Chord::determineTriad(sub, true, true);
         
@@ -2690,8 +3275,8 @@ class Chord {
             
             
             //Get the interval between the first and last note
-            string intval4 = Interval::determine(Note(root), chord[4]);
-            int int4 = Interval::measure(Note(root), chord[4]);
+            string intval4 = Interval::determine(Note::create(root), chord[4]);
+            int int4 = Interval::measure(Note::create(root), chord[4]);
             
             if(chStr == "M7"){
                 if (int4 == 2){
@@ -2757,31 +3342,25 @@ class Chord {
     
     
     
-
-    
-    
-    
-    
-    
-	static void chord6InversionExhauster(deque<Note> chord, bool shorthand,int tries, vector<string> *result,bool allowInversions){
+	static void chord6InversionExhauster(deque<NotePtr> chord, bool shorthand,int tries, vector<string> *result,bool allowInversions){
         
         
-        deque<Note> sub;
+        deque<NotePtr> sub;
         sub.insert(sub.begin(),chord.begin(),chord.begin()+5);
         vector<string> ch = Chord::determineExtended5Chord(sub, true, allowInversions,false);
         
 
     
         for(int c=0;c<ch.size();c++){
-            string ochStr = ch[c].substr(chord[0].name.size());
+            string ochStr = ch[c].substr(chord[0]->name.size());
 
             string chStr =  Chord::getChordSymbol(ch[c]);
             string root = Chord::getRootNote(ch[c]);
 
             
             //Get the interval between the first and last note
-            string intval5 = Interval::determine(Note(root), chord[5]);
-            int int5 = Interval::measure(Note(root), chord[5]);
+            string intval5 = Interval::determine(Note::create(root), chord[5]);
+            int int5 = Interval::measure(Note::create(root), chord[5]);
             
             
             /*
@@ -2853,10 +3432,10 @@ class Chord {
     
     
     
-    static void chord7InversionExhauster(deque<Note> chord, bool shorthand,int tries, vector<string> *result,bool allowInversions){
+    static void chord7InversionExhauster(deque<NotePtr> chord, bool shorthand,int tries, vector<string> *result,bool allowInversions){
         
         
-        deque<Note> sub;
+        deque<NotePtr> sub;
         sub.insert(sub.begin(),chord.begin(),chord.begin()+6);
         vector<string> ch = Chord::determineExtended6Chord(sub, true, true,false);
         
@@ -2870,8 +3449,8 @@ class Chord {
             string root = Chord::getRootNote(ch[c]);
                
             //Get the interval between the first and last note
-            string intval6 = Interval::determine(Note(root), chord[6]);
-            int int6 = Interval::measure(Note(root), chord[6]);
+            string intval6 = Interval::determine(Note::create(root), chord[6]);
+            int int6 = Interval::measure(Note::create(root), chord[6]);
             
             if (chStr == "11"){
                 if (int6 == 9){
@@ -2924,7 +3503,7 @@ class Chord {
 
     
     
-    static void polychordExhauster(deque<Note> chord, bool shorthand,int tries, vector<string> *result, bool allowInversions){
+    static void polychordExhauster(deque<NotePtr> chord, bool shorthand,int tries, vector<string> *result, bool allowInversions){
     
         
         
@@ -2955,18 +3534,15 @@ class Chord {
             vector<string> chord1options;
             
             //build new inversion
-            deque<Note> chord1;
+            deque<NotePtr> chord1;
            // cout<<chord.size() -(3 + f)<<endl;
             chord1.insert(chord1.begin(), chord.begin()+chord.size() -(3 + f),chord.end() );
             
             //explore top inversions
             Chord::subcall(chord1, shorthand, 1, &chord1options, allowInversions);
             
-            
-           /// cout<<"poly exploration turn "<<f*function_nr<<" found opt1 "<<chord1options.size()<<endl;
             //Chord::print(chord1);
-            
-           // Chord::print(chord1options);
+            // Chord::print(chord1options);
             
             for (int f2=0;f2<function_nr;f2++){
         
@@ -2991,7 +3567,7 @@ class Chord {
                     vector<string> chord2options;
                     
                     //build new inversion
-                    deque<Note> chord2;
+                    deque<NotePtr> chord2;
                     
                     chord2.insert(chord2.begin(), chord.begin(),chord.begin()+3 + f2);
                     
@@ -3009,7 +3585,7 @@ class Chord {
         
     }
     
-    static void subcall(deque<Note> chord, bool shorthand,int tries, vector<string> *result, bool allowInversions){
+    static void subcall(deque<NotePtr> chord, bool shorthand,int tries, vector<string> *result, bool allowInversions){
     
         //Chord::print(chord);
         
@@ -3055,24 +3631,10 @@ class Chord {
         }
         return ", inversion unknown";
     }
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+     
     //give access to private parts
     friend ostream& operator<<(ostream& os, const Chord& n);
-
+    friend ostream& operator<<(ostream& os, const shared_ptr<Chord>& n);
 };//class
     
    
@@ -3085,7 +3647,7 @@ class Chord {
         if(c.notes.size()==0){
             os <<"Chord undefined"<<endl;
         }else{
-            //os <<"Chord "<<c.getRoot().getDiatonicName() <<c.name<<" [ ";
+            //os <<"Chord "<<c.getRoot()->getDiatonicName() <<c.name<<" [ ";
             
             os <<"Chord "<<c.getName()<<" [ ";
             for(int i=0;i<c.notes.size();i++){
@@ -3099,9 +3661,28 @@ class Chord {
         }
         return os;
     }
-        
+    
+    
+    inline ostream& operator<<(ostream& os, shared_ptr<Chord>& c){
+        if(c->notes.size()==0){
+            os <<"Chord undefined"<<endl;
+        }else{
+            //os <<"Chord "<<c.getRoot()->getDiatonicName() <<c.name<<" [ ";
+            
+            os <<"Chord "<<c->getName()<<" [ ";
+            for(int i=0;i<c->notes.size();i++){
+                os<<c->notes[i];
+                if(i<c->notes.size()-1){
+                    os<<", ";
+                }
+            }
+            os<<" ]"<<endl;
+            
+        }
+        return os;
+    }
 
-        
+typedef shared_ptr<Chord> ChordPtr;
         
 
 }//namespace
