@@ -49,8 +49,24 @@ namespace MusicTheory{
     class Scale;
     typedef shared_ptr<Scale> (*ScaleFunctionPointer)(NotePtr);
     typedef map<string,ScaleFunctionPointer> ScaleFunctionLookup;
-    
-    static const Lookup ChordScaleLookup = {
+
+//===================================================================
+#pragma mark - CHORD SCALES
+//===================================================================
+
+/*
+The obvious scales are first in list. 
+More creative alternatives later.
+You can load your own using Scale::loadChordScales(string fileName);
+where each line should be formatted 
+chordSymbol tab comma separated list, eg.
+
+m   dorian,aeolian
+M   ionian
+Any chord found in this list will replace these options for only that chord
+*/
+
+    static Lookup ChordScaleLookup = {
         //Triads
 		{"m","dorian,aeolian"},
 		{"M","ionian"},
@@ -58,29 +74,29 @@ namespace MusicTheory{
 		{"dim","diminished"},
         
         //Augmented Chord
-		{"aug","augmented"},
-		{"+","augmented"},
+		{"aug","augmented,pentatonicMinorbIII"},
+		{"+","augmented,pentatonicMinorbIII"},
 		{"7#5","augmented"},
 		{"M7+5","melodicMinorIII"},//lydian aug
 		{"M7+","augmented,hindu"},
-		{"m7+","augmented,aeolian,dorian"},
-		{"7+","melodicMinorV,augmented"},//mixolydian b6
+		{"m7+","augmented,aeolian,dorian,pentatonicMinorbIII"},
+		{"7+","melodicMinorV,augmented,pentatonicMinorbIII"},//mixolydian b6
         
         //Suspended Chord
 		{"sus47","pentatonicMinorV,dorian,aeolian,phrygian,mixolydian"},
         {"sus4","pentatonicMinorV,harmonicMinor,melodicMinor,pentatonicMinor,blues,aeolian,dorian,phrygian,mixolydian"},
 		{"sus2","harmonicMinor,melodicMinor,pentatonicMinor,blues"},
-		{"sus","ionian,harmonicMinor,melodicMinor,pentatonicMinor,blues,aeolian,dorian,phrygian,mixolydian"},
+        {"sus","ionian,harmonicMinor,melodicMinor,pentatonicMinor,blues,aeolian,dorian,phrygian,mixolydian"},
 		{"11","mixolydian"},
-		{"sus4b9",""},
+		{"sus4b9","melodicMinorII"},
 		{"susb9","melodicMinorII"},
         
         //Sevenths
-		{"m7","dorian,aeolian,pentatonicMinor"},
-		{"M7","ionian,lydian"},
-		{"dom7","mixolydian"},
-		{"7","mixolydian"},
-		{"m7b5","locrian,melodicMinorVI"},
+		{"m7","dorian,aeolian,pentatonicMinor,pentatonicMinorII,pentatonicMinorV"},
+		{"M7","ionian,lydian,pentatonicMinorVII,pentatonicDominantII"},
+		{"dom7","mixolydian,pentatonicMajor,pentatonicDominant,pentatonicDominantII,pentatonicMinorV"},
+		{"7","mixolydian,pentatonicMajor,pentatonicDominant,pentatonicDominantII,pentatonicMinorV"},
+		{"m7b5","locrian,melodicMinorVI,pentatonicDominantbVI"},
 		{"dim7","lydianDiminished"},
 		{"mM7","harmonicMinor"},
 		{"mM7","harmonicMinor"},
@@ -106,11 +122,7 @@ namespace MusicTheory{
         
         //Elevenths
 		{"7#11","melodicMinorIV"},
-        
-       
-        
-        
-		{"m11","dorian,pentatonicMinorV,pentatonicMinorIV,pentatonicMinorIII,pentatonicMinor,blues"},
+        {"m11","dorian,pentatonicMinorV,pentatonicMinorIV,pentatonicMinorIII,pentatonicMinor,blues"},
         
         //Thirteenths
 		{"M13",""},
@@ -118,22 +130,22 @@ namespace MusicTheory{
         
 		{"13","mixolydian,melodicMinorIV,bebopDominant,pentatonicMajor,blues"},
         
-        //Altered Chord
+        //Altered Chord b9 #9 #11 b13
 		{"7b5","melodicMinorIV"},//lydian dominant
 		
         //Special
-		{"hendrix","blues"},
+		{"hendrix","blues,pentatonicMinorbIII"},
 		{"7b12","blues"},
         
         {"5","pentatonicMinor,blues,aeolian,pentatonicMajor,pentatonicMinorIII,pentatonicMinorIV,pentatonicMinorV"},//as you please, since it's common to most scales
         
-        //add
-        {"7b9b5","melodicMinorVII"},//superlocrian
+        
+        {"7b9b5","melodicMinorVII,pentatonicMinorbIII"},//superlocrian
         {"m7b9","phrygian"},
         
         //altered, melodic minor
         {"m11b5","melodicMinorVI"},
-        {"7#9b13","melodicMinorVII"}
+        {"7#9b13","melodicMinorVII,pentatonicMinorbIII"}
         
         
         
@@ -152,7 +164,11 @@ class Scale : public enable_shared_from_this<Scale> {
     string name;
     
     
-        //factory methods
+   
+//===================================================================
+#pragma mark - FACTORY METHODS
+//===================================================================
+
     
     static shared_ptr<Scale>create(){
         return shared_ptr<Scale>(new Scale());
@@ -161,6 +177,12 @@ class Scale : public enable_shared_from_this<Scale> {
     shared_ptr<Scale> copy(){
         return shared_ptr<Scale>(new Scale(*this));//copy
     }
+    
+//===================================================================
+#pragma mark - INSTANCE METHODS
+//===================================================================
+
+  
     
     int size(){
         return notes.size();
@@ -179,6 +201,52 @@ class Scale : public enable_shared_from_this<Scale> {
         
     }
     
+
+//===================================================================
+#pragma mark - STATIC METHODS
+//===================================================================
+
+    static bool isValid(shared_ptr<Scale>s){
+        if(!s){
+            return false;
+        }else{
+            return s->size()>1;
+        }
+    }
+    
+    static bool loadChordScales(string fileName){
+        if(!ofFile::doesFileExist(fileName)){
+            ofLogError()<<"Missing chord scale file: "<<fileName<<endl;
+            return false;
+        }
+        ofBuffer buffer = ofBufferFromFile(fileName);
+        
+         if(buffer.size()){
+            for(auto line: buffer.getLines()){
+                //cout << line << endl;
+                vector<string>p = ofSplitString(line,"\t");
+                
+                if(p.size()>1){
+                    if(Chord::isValidName(p[0])){
+                        ofStringReplace(p[1]," ", "");
+                        ChordScaleLookup[p[0]] = p[1];
+                        ofLogNotice()<<"Setting chord scale for \""<<p[0]<<"\" to "<<p[1]<<endl;
+                    
+                    }
+                }
+            }
+        }
+    
+        return true;
+        
+    }
+    
+//===================================================================
+#pragma mark - Diatonic scales
+//===================================================================
+
+  
+  
     //The diatonic scales and its modes
     /*
      Returns the diatonic scale starting on note.
@@ -193,6 +261,7 @@ class Scale : public enable_shared_from_this<Scale> {
         return nts;
     }
     static shared_ptr<Scale> getDiatonic(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "diatonic";//same as ionian, doremi etc
         scale->notes = Scale::diatonic(note->copy());
@@ -212,12 +281,16 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getIonian(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "ionian";//same as ionian, doremi etc
         scale->notes = Scale::diatonic(note->copy());
         return scale;
     }
     
+    static shared_ptr<Scale> getIonian(string note){
+        return Scale::getIonian(Note::create(note));
+    }
     /*
      Returns the dorian mode scale starting on note.
      Example:
@@ -236,10 +309,15 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getDorian(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "dorian";
         scale->notes = Scale::dorian(note->copy());
         return scale;
+    }
+    
+    static shared_ptr<Scale> getDorian(string note){
+        return Scale::getDorian(Note::create(note));
     }
     
     /*
@@ -258,6 +336,7 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getPhrygian(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "phrygian";
         scale->notes = Scale::phrygian(note->copy());
@@ -265,7 +344,9 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     
-    
+    static shared_ptr<Scale> getPhrygian(string note){
+        return Scale::getPhrygian(Note::create(note));
+    }
     
     /*
      Returns the lydian mode scale starting on note.
@@ -283,10 +364,15 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getLydian(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "lydian";
         scale->notes = Scale::lydian(note->copy());
         return scale;
+    }
+    
+    static shared_ptr<Scale> getLydian(string note){
+        return Scale::getLydian(Note::create(note));
     }
     
     /*
@@ -306,10 +392,15 @@ class Scale : public enable_shared_from_this<Scale> {
     
     
     static shared_ptr<Scale> getMixolydian(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "mixolydian";
         scale->notes = Scale::mixolydian(note->copy());
         return scale;
+    }
+    
+    static shared_ptr<Scale> getMixolydian(string note){
+        return Scale::getMixolydian(Note::create(note));
     }
     
     
@@ -333,10 +424,15 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getAeolian(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "aeolian";
         scale->notes = Scale::aeolian(note->copy());
         return scale;
+    }
+    
+    static shared_ptr<Scale> getAeolian(string note){
+        return Scale::getAeolian(Note::create(note));
     }
     
     /*
@@ -355,12 +451,16 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getLocrian(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "locrian";
         scale->notes = Scale::locrian(note->copy());
         return scale;
     }
     
+    static shared_ptr<Scale> getLocrian(string note){
+        return Scale::getLocrian(Note::create(note));
+    }
     
     
     
@@ -381,11 +481,23 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getNaturalMinor(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "naturalMinor";
         scale->notes = Scale::naturalMinor(note->copy());
         return scale;
     }
+    
+    static shared_ptr<Scale> getNaturalMinor(string note){
+        return Scale::getNaturalMinor(Note::create(note));
+    }
+
+    
+//===================================================================
+#pragma mark - Harmonic minor scales
+//===================================================================
+
+  
     
     /*
      Returns the harmonic minor scale starting on note.
@@ -401,12 +513,24 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getHarmonicMinor(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "harmonicMinor";
         scale->notes = Scale::harmonicMinor(note->copy());
         return scale;
     }
     
+    static shared_ptr<Scale> getHarmonicMinor(string note){
+        return Scale::getHarmonicMinor(Note::create(note));
+    }
+    
+    
+//===================================================================
+#pragma mark - Melodic minor scales
+//===================================================================
+
+  
+  
     /*
      Returns the melodic minor scale starting on note.
      Example:
@@ -426,10 +550,15 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getMelodicMinor(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "melodicMinor";
         scale->notes = Scale::melodicMinor(note->copy());
         return scale;
+    }
+    
+    static shared_ptr<Scale> getMelodicMinor(string note){
+        return Scale::getMelodicMinor(Note::create(note));
     }
     
     /*
@@ -444,17 +573,27 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getMelodicMinorII(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "melodicMinorII";
         scale->notes = Scale::melodicMinorII(note->copy());
         return scale;
     }
     
+    static shared_ptr<Scale> getMelodicMinorII(string note){
+        return Scale::getMelodicMinorII(Note::create(note));
+    }
+    
     static shared_ptr<Scale> getPhrygianRaisedSixth(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "phrygian#6";
         scale->notes = Scale::melodicMinorII(note->copy());
         return scale;
+    }
+    
+    static shared_ptr<Scale> getPhrygianRaisedSixth(string note){
+        return Scale::getPhrygianRaisedSixth(Note::create(note));
     }
     /*
      Lydian augmented
@@ -468,18 +607,27 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getMelodicMinorIII(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "melodicMinorIII";
         scale->notes = Scale::melodicMinor(note->copy());
         return scale;
     }
+    
+    static shared_ptr<Scale> getMelodicMinorIII(string note){
+        return Scale::getMelodicMinorIII(Note::create(note));
+    }
     static shared_ptr<Scale> getLydianAugmented(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "lydianAugmented";
         scale->notes = Scale::melodicMinor(note->copy());
         return scale;
     }
     
+    static shared_ptr<Scale> getLydianAugmented(string note){
+        return Scale::getLydianAugmented(Note::create(note));
+    }
     /*
      Lydian dominant
      Mixolydian #4
@@ -493,18 +641,27 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getMelodicMinorIV(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "melodicMinorIV";
         scale->notes = Scale::melodicMinorIV(note->copy());
         return scale;
     }
+    
+    static shared_ptr<Scale> getMelodicMinorIV(string note){
+        return Scale::getMelodicMinorIV(Note::create(note));
+    }
     static shared_ptr<Scale> getLydianDominant(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "lydianDominant";
         scale->notes = Scale::melodicMinorIV(note->copy());
         return scale;
     }
     
+    static shared_ptr<Scale> getLydianDominant(string note){
+        return Scale::getLydianDominant(Note::create(note));
+    }
     
     
     /*
@@ -519,23 +676,34 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getMelodicMinorV(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "melodicMinorV";
         scale->notes = Scale::melodicMinorV(note->copy());
         return scale;
     }
+    
+    static shared_ptr<Scale> getMelodicMinorV(string note){
+        return Scale::getMelodicMinorV(Note::create(note));
+    }
+    
     static shared_ptr<Scale> getMixolydianLoweredSixth(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "mixolydianLoweredSixth";
         scale->notes = Scale::melodicMinorV(note->copy());
         return scale;
     }
     
+    static shared_ptr<Scale> getMixolydianLoweredSixth(string note){
+        return Scale::getMixolydianLoweredSixth	(Note::create(note));
+    }
     /*
      Locrian #2
      */
     
     static deque<NotePtr> melodicMinorVI(NotePtr note){
+        cout<<__FUNCTION__<<" "<<note<<endl;
         deque<NotePtr> scale = Scale::locrian(note->copy());
         scale[1]->augment();
         Scale::setOctave(scale,note->getAbsoluteOctave());
@@ -543,12 +711,19 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getMelodicMinorVI(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "melodicMinorVI";
         scale->notes = Scale::melodicMinorVI(note->copy());
         return scale;
     }
+    
+    static shared_ptr<Scale> getMelodicMinorVI(string note){
+        return Scale::getMelodicMinorVI	(Note::create(note));
+    }
+    
     static shared_ptr<Scale> getHalfDiminished(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "halfDiminished";
         scale->notes = Scale::melodicMinorVI(note->copy());
@@ -556,6 +731,9 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     
+    static shared_ptr<Scale> getHalfDiminished(string note){
+        return Scale::getHalfDiminished	(Note::create(note));
+    }
     
     /*
      SuperLocrian 
@@ -571,18 +749,30 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getMelodicMinorVII(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "melodicMinorVII";
         scale->notes = Scale::melodicMinorVII(note->copy());
         return scale;
     }
+    
+    static shared_ptr<Scale> getMelodicMinorVII(string note){
+        return Scale::getMelodicMinorVII	(Note::create(note));
+    }
+    
+    
     static shared_ptr<Scale> getSuperLocrian(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "superLocrian";
         scale->notes = Scale::melodicMinorVII(note->copy());
         return scale;
     }
     
+    
+    static shared_ptr<Scale> getSuperLocrian(string note){
+        return Scale::getSuperLocrian	(Note::create(note));
+    }
     
     
     
@@ -599,11 +789,23 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getLydianDiminished(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "lydianDiminished";
         scale->notes = Scale::lydianDiminished(note->copy());
         return scale;
     }
+    
+    static shared_ptr<Scale> getLydianDiminished(string note){
+        return Scale::getLydianDiminished(Note::create(note));
+    }
+    
+    
+    
+//===================================================================
+#pragma mark - Pentatonic scales
+//===================================================================
+
     
     
     static deque<NotePtr> pentatonicMinor(NotePtr note){
@@ -618,12 +820,17 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getPentatonicMinor(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "pentatonicMinor";
         scale->notes = Scale::pentatonicMinor(note);
         return scale;
     }
    
+    
+    static shared_ptr<Scale> getPentatonicMinor(string note){
+        return Scale::getPentatonicMinor(Note::create(note));
+    }
     
     
     static deque<NotePtr> pentatonicMajor(NotePtr note){
@@ -638,10 +845,15 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getPentatonicMajor(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "pentatonicMajor";
         scale->notes = Scale::pentatonicMajor(note->copy());
         return scale;
+    }
+    
+    static shared_ptr<Scale> getPentatonicMajor(string note){
+        return Scale::getPentatonicMajor(Note::create(note));
     }
     
     static deque<NotePtr> pentatonicDominant(NotePtr note){
@@ -656,14 +868,30 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getPentatonicDominant(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "pentatonicDominant";
         scale->notes = Scale::pentatonicDominant(note->copy());
         return scale;
     }
     
+    static shared_ptr<Scale> getPentatonicDominant(string note){
+        return Scale::getPentatonicDominant(Note::create(note));
+    }
+    
+    
+//===================================================================
+#pragma mark - Pentatonic scales on different roots
+//===================================================================
+
+    
     /*
-    Pentatonic minor starting on minor second away from note
+    Pentatonic minor starting on minor second away from note.
+    Major pentatonic is the same starting from second (minor third) in
+    the minor.
+    
+    Scofield & Mccoy Tyner concept
+    https://www.youtube.com/watch?v=8ZMCbf1TfRc
     */
     
     static deque<NotePtr> pentatonicMinorbII(NotePtr note){
@@ -671,10 +899,15 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getPentatonicMinorbII(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "pentatonicMinorbII";
         scale->notes = Scale::pentatonicMinorbII(note);
         return scale;
+    }
+    
+    static shared_ptr<Scale> getPentatonicMinorbII(string note){
+        return Scale::getPentatonicMinorbII(Note::create(note));
     }
     
     
@@ -687,11 +920,16 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getPentatonicMinorII(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "pentatonicMinorII";
         scale->notes = Scale::pentatonicMinorII(note);
         scale->setOctave(note->getAbsoluteOctave());
         return scale;
+    }
+    
+    static shared_ptr<Scale> getPentatonicMinorII(string note){
+        return Scale::getPentatonicMinorII(Note::create(note));
     }
     
     /*
@@ -703,11 +941,17 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getPentatonicMinorbIII(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "pentatonicMinorbIII";
         scale->notes = Scale::pentatonicMinorbIII(note);
         return scale;
     }
+    
+    static shared_ptr<Scale> getPentatonicMinorbIII(string note){
+        return Scale::getPentatonicMinorbIII(Note::create(note));
+    }
+    
     /*
     Pentatonic minor starting on major third away from note
     */
@@ -717,12 +961,17 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getPentatonicMinorIII(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "pentatonicMinorIII";
         scale->notes = Scale::pentatonicMinorIII(note);
         return scale;
     }
-   
+    
+    static shared_ptr<Scale> getPentatonicMinorIII(string note){
+        return Scale::getPentatonicMinorIII(Note::create(note));
+    }
+    
     /*
     Pentatonic minor starting on fourth away from note
     */
@@ -732,12 +981,17 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getPentatonicMinorIV(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "pentatonicMinorIV";
         scale->notes = Scale::pentatonicMinorIV(note);
         return scale;
     }
-
+    
+    static shared_ptr<Scale> getPentatonicMinorIV(string note){
+        return Scale::getPentatonicMinorIV(Note::create(note));
+    }
+    
     /*
     Pentatonic minor starting on flat fifth away from note
     */
@@ -747,12 +1001,17 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getPentatonicMinorbV(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "pentatonicMinorbV";
         scale->notes = Scale::pentatonicMinorbV(note);
         return scale;
     }
-   
+    
+    static shared_ptr<Scale> getPentatonicMinorbV(string note){
+        return Scale::getPentatonicMinorbV(Note::create(note));
+    }
+    
    
     /*
     Pentatonic minor starting on perfect fifth away from note
@@ -763,11 +1022,17 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getPentatonicMinorV(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "pentatonicMinorV";
         scale->notes = Scale::pentatonicMinorV(note);
         return scale;
     }
+    
+    static shared_ptr<Scale> getPentatonicMinorV(string note){
+        return Scale::getPentatonicMinorV(Note::create(note));
+    }
+    
    
     /*
     Pentatonic minor starting on minor sixth away from note
@@ -778,11 +1043,17 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getPentatonicMinorbVI(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "pentatonicMinorbVI";
         scale->notes = Scale::pentatonicMinorbVI(note);
         return scale;
     }
+    
+    static shared_ptr<Scale> getPentatonicMinorbVI(string note){
+        return Scale::getPentatonicMinorbVI(Note::create(note));
+    }
+    
     
    
     /*
@@ -794,11 +1065,17 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getPentatonicMinorVI(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "pentatonicMinorVI";
         scale->notes = Scale::pentatonicMinorVI(note);
         return scale;
     }
+    
+    static shared_ptr<Scale> getPentatonicMinorVI(string note){
+        return Scale::getPentatonicMinorVI(Note::create(note));
+    }
+    
     
     /*
     Pentatonic minor starting on minor seventh away from note
@@ -809,11 +1086,17 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getPentatonicMinorbVII(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "pentatonicMinorbVII";
         scale->notes = Scale::pentatonicMinorbVII(note);
         return scale;
     }
+    
+    static shared_ptr<Scale> getPentatonicMinorbVII(string note){
+        return Scale::getPentatonicMinorbVII(Note::create(note));
+    }
+    
     
     /*
     Pentatonic minor starting on major seventh away from note
@@ -824,6 +1107,7 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getPentatonicMinorVII(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "pentatonicMinorVII";
         scale->notes = Scale::pentatonicMinorVII(note);
@@ -832,7 +1116,211 @@ class Scale : public enable_shared_from_this<Scale> {
     
     
     
+    static shared_ptr<Scale> getPentatonicMinorVII(string note){
+        return Scale::getPentatonicMinorVII(Note::create(note));
+    }
     
+    
+    /*
+    Dominant pentatonics with different roots
+    */
+    
+    static deque<NotePtr> pentatonicDominantbII(NotePtr note){
+        return Scale::pentatonicDominant(note->getTransposed(1));
+    }
+    
+    static shared_ptr<Scale> getPentatonicDominantbII(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "pentatonicDominantbII";
+        scale->notes = Scale::pentatonicDominantbII(note);
+        return scale;
+    }
+    
+    static shared_ptr<Scale> getPentatonicDominantbII(string note){
+        return Scale::getPentatonicDominantbII(Note::create(note));
+    }
+
+
+    static deque<NotePtr> pentatonicDominantII(NotePtr note){
+        return Scale::pentatonicDominant(note->getTransposed(2));
+    }
+    
+    static shared_ptr<Scale> getPentatonicDominantII(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "pentatonicDominantII";
+        scale->notes = Scale::pentatonicDominantII(note);
+        return scale;
+    }
+    
+    static shared_ptr<Scale> getPentatonicDominantII(string note){
+        return Scale::getPentatonicDominantII(Note::create(note));
+    }
+
+
+
+
+    static deque<NotePtr> pentatonicDominantbIII(NotePtr note){
+        return Scale::pentatonicDominant(note->getTransposed(3));
+    }
+    
+    static shared_ptr<Scale> getPentatonicDominantbIII(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "pentatonicDominantbIII";
+        scale->notes = Scale::pentatonicDominantbIII(note);
+        return scale;
+    }
+    
+    static shared_ptr<Scale> getPentatonicDominantbIII(string note){
+        return Scale::getPentatonicDominantbIII(Note::create(note));
+    }
+    
+
+
+    static deque<NotePtr> pentatonicDominantIII(NotePtr note){
+        return Scale::pentatonicDominant(note->getTransposed(4));
+    }
+    
+    static shared_ptr<Scale> getPentatonicDominantIII(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "pentatonicDominantIII";
+        scale->notes = Scale::pentatonicDominantIII(note);
+        return scale;
+    }
+    
+    static shared_ptr<Scale> getPentatonicDominantIII(string note){
+        return Scale::getPentatonicDominantIII(Note::create(note));
+    }
+    
+    static deque<NotePtr> pentatonicDominantIV(NotePtr note){
+        return Scale::pentatonicDominant(note->getTransposed(5));
+    }
+    
+    static shared_ptr<Scale> getPentatonicDominantIV(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "pentatonicDominantIV";
+        scale->notes = Scale::pentatonicDominantIV(note);
+        return scale;
+    }
+    
+    static shared_ptr<Scale> getPentatonicDominantIV(string note){
+        return Scale::getPentatonicDominantIV(Note::create(note));
+    }
+    
+    
+    
+    static deque<NotePtr> pentatonicDominantbV(NotePtr note){
+        return Scale::pentatonicDominant(note->getTransposed(6));
+    }
+    
+    static shared_ptr<Scale> getPentatonicDominantbV(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "pentatonicDominantbV";
+        scale->notes = Scale::pentatonicDominantbV(note);
+        return scale;
+    }
+    
+    static shared_ptr<Scale> getPentatonicDominantbV(string note){
+        return Scale::getPentatonicDominantbV(Note::create(note));
+    }
+    
+    
+    static deque<NotePtr> pentatonicDominantV(NotePtr note){
+        return Scale::pentatonicDominant(note->getTransposed(7));
+    }
+    
+    static shared_ptr<Scale> getPentatonicDominantV(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "pentatonicDominantV";
+        scale->notes = Scale::pentatonicDominantV(note);
+        return scale;
+    }
+    
+    static shared_ptr<Scale> getPentatonicDominantV(string note){
+        return Scale::getPentatonicDominantV(Note::create(note));
+    }
+
+    
+    static deque<NotePtr> pentatonicDominantbVI(NotePtr note){
+        return Scale::pentatonicDominant(note->getTransposed(8));
+    }
+    
+    static shared_ptr<Scale> getPentatonicDominantbVI(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "pentatonicDominantbVI";
+        scale->notes = Scale::pentatonicDominantbVI(note);
+        return scale;
+    }
+    
+    static shared_ptr<Scale> getPentatonicDominantbVI(string note){
+        return Scale::getPentatonicDominantbVI(Note::create(note));
+    }
+    
+
+
+    
+    static deque<NotePtr> pentatonicDominantVI(NotePtr note){
+        return Scale::pentatonicDominant(note->getTransposed(9));
+    }
+    
+    static shared_ptr<Scale> getPentatonicDominantVI(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "pentatonicDominantVI";
+        scale->notes = Scale::pentatonicDominantVI(note);
+        return scale;
+    }
+    
+    static shared_ptr<Scale> getPentatonicDominantVI(string note){
+        return Scale::getPentatonicDominantVI(Note::create(note));
+    }
+    
+
+
+    
+    static deque<NotePtr> pentatonicDominantbVII(NotePtr note){
+        return Scale::pentatonicDominant(note->getTransposed(10));
+    }
+    
+    static shared_ptr<Scale> getPentatonicDominantbVII(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "pentatonicDominantbVII";
+        scale->notes = Scale::pentatonicDominantbVII(note);
+        return scale;
+    }
+    
+    static shared_ptr<Scale> getPentatonicDominantbVII(string note){
+        return Scale::getPentatonicDominantbVII(Note::create(note));
+    }
+    
+    
+    static deque<NotePtr> pentatonicDominantVII(NotePtr note){
+        return Scale::pentatonicDominant(note->getTransposed(11));
+    }
+    
+    static shared_ptr<Scale> getPentatonicDominantVII(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "pentatonicDominantVII";
+        scale->notes = Scale::pentatonicDominantVII(note);
+        return scale;
+    }
+    
+    static shared_ptr<Scale> getPentatonicDominantVII(string note){
+        return Scale::getPentatonicDominantVII(Note::create(note));
+    }
+//===================================================================
+#pragma mark - Blues scales
+//===================================================================
+   
     
     static deque<NotePtr> blues(NotePtr note){
         deque<NotePtr> scale = Scale::pentatonicMinor(note->copy());
@@ -841,120 +1329,35 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getBlues(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "blues";
         scale->notes = Scale::blues(note->copy());
         return scale;
     }
     
-    /*
-     
-     http://www.jazzguitar.be/bebopscale.html
-     
-     The G Bebop Scale can be played on most chords that are diatonic to the key of C major, but not on the C major chord itself because the F is an avoid note for the C major chord.
-     
-     The Bebop Scale is a dominant scale and has the same function in a key as the Mixolydian scale. It can be played on the dominant and the sub dominant. Our example, the G Bebop Scale, is the dominant of C Major and can be played over G7 and Dm7, giving us a great tool to play over II V I progressions.
-     
-     */
-    
-    static deque<NotePtr> bebopDominant(NotePtr note){
-        deque<NotePtr> bebop = Scale::mixolydian(note->copy());
-        NotePtr maj7 = note->getOctaveUp();
-        maj7->diminish();
-        bebop.insert(bebop.end(), maj7);
-        return bebop;
+    static shared_ptr<Scale> getBlues(string note){
+        return Scale::getBlues(Note::create(note));
     }
-    
-    static shared_ptr<Scale> getBebopDominant(NotePtr note){
-        shared_ptr<Scale> scale = Scale::create();
-        scale->name = "bebopDominant";
-        scale->notes = Scale::bebopDominant(note->copy());
-        return scale;
-    }
-    
-    
-    /*
-     Borg: This is the unique minor flamenco scale,
-     a phrygian with added major third
-     */
-    static deque<NotePtr> flamenco(NotePtr note){
-        deque<NotePtr> scale = Scale::phrygian(note->copy());
-        NotePtr majThird = scale[2]->getAugmented();
-        scale.insert(scale.begin()+3, majThird);
-        return scale;
-    }
-    
-    static shared_ptr<Scale> getFlamenco(NotePtr note){
-        shared_ptr<Scale> scale = Scale::create();
-        scale->name = "flamenco";
-        scale->notes = Scale::flamenco(note->copy());
-        return scale;
-    }
-    
-    static deque<NotePtr> chromatic(NotePtr note){
-        deque<NotePtr> scale;
-        scale.push_back(note->copy());
-        for(int i =1;i<12;i++){
-            NotePtr n = note->copy();
-            n->set(note->getInt()+i);
-            scale.push_back(n);
-        }
-        return scale;
-    }
+
+//===================================================================
+#pragma mark - Chromatic scales
+//===================================================================
     
     
     static shared_ptr<Scale> getChromatic(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "chromatic";
         scale->notes = Scale::chromatic(note->copy());
         return scale;
     }
     
-    /*
-     Japanese scales
-     */
-    
-    static deque<NotePtr> inSen(NotePtr note){
-        deque<NotePtr> scale = Scale::pentatonicMinor(note->copy());
-        scale[1] = Interval::minorSecond(note->copy());
-        return scale;
+    static shared_ptr<Scale> getChromatic(string note){
+        return Scale::getChromatic(Note::create(note));
     }
     
-    static shared_ptr<Scale> getInSen(NotePtr note){
-        shared_ptr<Scale> scale = Scale::create();
-        scale->name = "insen";
-        scale->notes = Scale::inSen(note->copy());
-        return scale;
-    }
-    
-    
-    static deque<NotePtr> hirajoshi(NotePtr note){
-        deque<NotePtr> scale = Scale::pentatonicMinor(note->copy());
-        scale[1] = Interval::minorSecond(note->copy());
-        scale[4] = Interval::minorSixth(note->copy());
-        return scale;
-    }
-    
-    static shared_ptr<Scale> getHirajoshi(NotePtr note){
-        shared_ptr<Scale> scale = Scale::create();
-        scale->name = "hirajoshi";
-        scale->notes = Scale::hirajoshi(note->copy());
-        return scale;
-    }
-    
-    static deque<NotePtr> hindu(NotePtr note){
-        deque<NotePtr> scale = Scale::ionian(note->copy());
-        scale[5]->diminish();
-        return scale;
-    }
-    
-    static shared_ptr<Scale> getHindu(NotePtr note){
-        shared_ptr<Scale> scale = Scale::create();
-        scale->name = "hindu";
-        scale->notes = Scale::hindu(note->copy());
-        return scale;
-    }
-    
+ 
     /*
      Returns the whole note scale starting on note.
      Example:
@@ -977,13 +1380,152 @@ class Scale : public enable_shared_from_this<Scale> {
     
     
     static shared_ptr<Scale> getWholeNote(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "wholeNote";
         scale->notes = Scale::wholeNote(note->copy());
         return scale;
     }
     
+    static shared_ptr<Scale> getWholeNote(string note){
+        return Scale::getWholeNote(Note::create(note));
+    }
+   
+//===================================================================
+#pragma mark - Ethnic scales
+//===================================================================
+
+  
+    
     /*
+     
+     http://www.jazzguitar.be/bebopscale.html
+     
+     The G Bebop Scale can be played on most chords that are diatonic to the key of C major, but not on the C major chord itself because the F is an avoid note for the C major chord.
+     
+     The Bebop Scale is a dominant scale and has the same function in a key as the Mixolydian scale. It can be played on the dominant and the sub dominant. Our example, the G Bebop Scale, is the dominant of C Major and can be played over G7 and Dm7, giving us a great tool to play over II V I progressions.
+     
+     */
+    
+    static deque<NotePtr> bebopDominant(NotePtr note){
+        deque<NotePtr> bebop = Scale::mixolydian(note->copy());
+        NotePtr maj7 = note->getOctaveUp();
+        maj7->diminish();
+        bebop.insert(bebop.end(), maj7);
+        return bebop;
+    }
+    
+    static shared_ptr<Scale> getBebopDominant(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "bebopDominant";
+        scale->notes = Scale::bebopDominant(note->copy());
+        return scale;
+    }
+    
+    
+    static shared_ptr<Scale> getBebopDominant(string note){
+        return Scale::getBebopDominant(Note::create(note));
+    }
+    
+    /*
+     Borg: This is the unique minor flamenco scale,
+     a phrygian with added major third
+     */
+    static deque<NotePtr> flamenco(NotePtr note){
+        deque<NotePtr> scale = Scale::phrygian(note->copy());
+        NotePtr majThird = scale[2]->getAugmented();
+        scale.insert(scale.begin()+3, majThird);
+        return scale;
+    }
+    
+    static shared_ptr<Scale> getFlamenco(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "flamenco";
+        scale->notes = Scale::flamenco(note->copy());
+        return scale;
+    }
+    
+    static shared_ptr<Scale> getFlamenco(string note){
+        return Scale::getFlamenco(Note::create(note));
+    }
+    
+    static deque<NotePtr> chromatic(NotePtr note){
+        deque<NotePtr> scale;
+        scale.push_back(note->copy());
+        for(int i =1;i<12;i++){
+            NotePtr n = note->copy();
+            n->set(note->getInt()+i);
+            scale.push_back(n);
+        }
+        return scale;
+    }
+    
+    
+
+    /*
+     Japanese scales
+     */
+    
+    static deque<NotePtr> inSen(NotePtr note){
+        deque<NotePtr> scale = Scale::pentatonicMinor(note->copy());
+        scale[1] = Interval::minorSecond(note->copy());
+        return scale;
+    }
+    
+    static shared_ptr<Scale> getInSen(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "insen";
+        scale->notes = Scale::inSen(note->copy());
+        return scale;
+    }
+    static shared_ptr<Scale> getInSen(string note){
+        return Scale::getInSen(Note::create(note));
+    }
+    
+    static deque<NotePtr> hirajoshi(NotePtr note){
+        deque<NotePtr> scale = Scale::pentatonicMinor(note->copy());
+        scale[1] = Interval::minorSecond(note->copy());
+        scale[4] = Interval::minorSixth(note->copy());
+        return scale;
+    }
+    
+    static shared_ptr<Scale> getHirajoshi(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "hirajoshi";
+        scale->notes = Scale::hirajoshi(note->copy());
+        return scale;
+    }
+    static shared_ptr<Scale> getHirajoshi(string note){
+        return Scale::getHirajoshi(Note::create(note));
+    }
+    
+    static deque<NotePtr> hindu(NotePtr note){
+        deque<NotePtr> scale = Scale::ionian(note->copy());
+        scale[5]->diminish();
+        return scale;
+    }
+    
+    static shared_ptr<Scale> getHindu(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "hindu";
+        scale->notes = Scale::hindu(note->copy());
+        return scale;
+    }
+    static shared_ptr<Scale> getHindu(string note){
+        return Scale::getHindu(Note::create(note));
+    }
+    
+ 
+//===================================================================
+#pragma mark - Diminished / Augmented scales
+//===================================================================
+  
+            /*
      Returns the diminshed scale on note.
      Example:
      {{{
@@ -1012,10 +1554,15 @@ class Scale : public enable_shared_from_this<Scale> {
      }
     
     static shared_ptr<Scale> getDiminished(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "diminished";
         scale->notes = Scale::diminished(note->copy());
         return scale;
+    }
+
+    static shared_ptr<Scale> getDiminished(string note){
+        return Scale::getDiminished(Note::create(note));
     }
     
     static deque<NotePtr> wholeStepHalfStep(NotePtr note){
@@ -1052,6 +1599,7 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     static shared_ptr<Scale> getAugmented(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "augmented";
         scale->notes = Scale::augmented(note->copy());
@@ -1059,12 +1607,20 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     
+
+    static shared_ptr<Scale> getAugmented(string note){
+        return Scale::getAugmented(Note::create(note));
+    }
     
+
+//===================================================================
+#pragma mark - Helper functions
+//===================================================================
+    bool isValid(){
+        return notes.size()>1;
+    }
     
-             
-     /*
-      Helper functions
-      */
+
     static deque<NotePtr> offset(deque<NotePtr> orgscale,int amount){
         if(!(orgscale.size()>amount)){
             ofLogWarning()<<__FUNCTION__<<" not enough notes"<<endl;
@@ -1270,10 +1826,10 @@ class Scale : public enable_shared_from_this<Scale> {
         }
     }
     
-    bool isValid(){
-        return notes.size()>1;
-    }
-    
+
+//===================================================================
+#pragma mark - SCALES FOR CHORDS
+//===================================================================
         /*
          Determines the kind of scale. Can recognize all the diatonic modes and \
          the minor scales.
@@ -1356,21 +1912,15 @@ class Scale : public enable_shared_from_this<Scale> {
     
     
     static vector<string> getScalesForChord(string chordSymbol){
-        Lookup m = ChordScaleLookup;
-        string str = m[chordSymbol];
+        string str = ChordScaleLookup[chordSymbol];
         return ofSplitString(str,",");
         
     }
     
     
     static vector<shared_ptr<Scale>> getScalesForChord(ChordPtr chord){
-        
         vector<shared_ptr<Scale>> scalesInKey;
-        
-        Lookup m = ChordScaleLookup;
-        string str = m[chord->getChordSymbol()];
-        
-        
+        string str = ChordScaleLookup[chord->getChordSymbol()];
         
         if(str==""){
             cout<<"getScalesForChord found nothing in ChordScaleLookup for "<<chord->getChordSymbol()<<endl;
@@ -1446,6 +1996,8 @@ class Scale : public enable_shared_from_this<Scale> {
         
         
     }
+    
+
     /*
      //fix
     static void print(Scale  s){
@@ -1458,7 +2010,10 @@ class Scale : public enable_shared_from_this<Scale> {
     
     
 private:
-    
+//===================================================================
+#pragma mark - Scale function hash map
+//===================================================================
+
     
     static ScaleFunctionLookup ScaleLookup(){
        static ScaleFunctionLookup _scaleLookup ={
@@ -1484,6 +2039,16 @@ private:
             {"pentatonicMinorVII",&Scale::getPentatonicMinorVII},
             {"pentatonicMajor",&Scale::getPentatonicMajor},
             {"pentatonicDominant",&Scale::getPentatonicDominant},
+            {"pentatonicDominantbII",&Scale::getPentatonicDominantbII},
+            {"pentatonicDominantbIII",&Scale::getPentatonicDominantbIII},
+            {"pentatonicDominantIII",&Scale::getPentatonicDominantIII},
+            {"pentatonicDominantIV",&Scale::getPentatonicDominantIV},
+            {"pentatonicDominantbV",&Scale::getPentatonicDominantbV},
+            {"pentatonicDominantV",&Scale::getPentatonicDominantV},
+            {"pentatonicDominantbVI",&Scale::getPentatonicDominantbVI},
+            {"pentatonicDominantVI",&Scale::getPentatonicDominantVI},
+            {"pentatonicDominantbVII",&Scale::getPentatonicDominantbVII},
+            {"pentatonicDominantVII",&Scale::getPentatonicDominantVII},
             {"melodicMinor",&Scale::getMelodicMinor},
             {"melodicMinorII",&Scale::getMelodicMinorII},
             {"melodicMinorIII",&Scale::getMelodicMinorIII},
@@ -1531,7 +2096,7 @@ inline ostream& operator<<(ostream& os, Scale& s){
 }
 
 inline ostream& operator<<(ostream& os, ScalePtr& s){
-    if(s->size()){
+    if(Scale::isValid(s)){
         os <<"Scale "<<s->notes[0]->getShorthand()<<" "<<s->name<<" [ ";
         for(int i=0;i<s->notes.size();i++){
             os<<s->notes[i];
@@ -1540,6 +2105,8 @@ inline ostream& operator<<(ostream& os, ScalePtr& s){
             }
         }
         os<<" ]"<<endl;
+    }else{
+        os<<"Invalid scale"<<endl;
     }
     return os;
 }

@@ -235,8 +235,10 @@ class Chord : public enable_shared_from_this<Chord>{
         }
     }
     
-    
-    //factory methods
+//===================================================================
+#pragma mark - FACTORY METHODS
+//===================================================================
+  
     
     static shared_ptr<Chord>create(string _name = ""){
         return shared_ptr<Chord>(new Chord(_name));
@@ -245,28 +247,11 @@ class Chord : public enable_shared_from_this<Chord>{
     shared_ptr<Chord> copy(){
         return shared_ptr<Chord>(new Chord(*this));//copy
     }
-    
-    string getName(){
-        if(!isValid()){
-            return "Invalid chord";
-        }
-        string fullName;
-        if(getBass()->getName()!=getRoot()->getName()){
-            //slash chord
-            fullName = getRoot()->getDiatonicName() + name+"/"+getBass()->getDiatonicName();
-        }else if(polychords.size()>0){
-            //ignoring for the moment more than one nested polychord...
-            fullName = getRoot()->getDiatonicName() + name+"/"+getBass()->getDiatonicName()+"|"+polychords[0]->getName();
-        }else{
-            //normal chord
-            fullName= getRoot()->getDiatonicName() + name;
-        }
-        return fullName;
-    }
-    
-    bool isValid(){
-        return notes.size()>1;
-    }
+
+//===================================================================
+#pragma mark - INSTANCE METHODS
+//===================================================================
+  
     
     /*
      This sets the chord symbol. If you want o change dom7 to 7 for instance, use it.
@@ -288,11 +273,30 @@ class Chord : public enable_shared_from_this<Chord>{
     }
     
     
+
+    string getName(){
+        if(!isValid()){
+            return "Invalid chord";
+        }
+        string fullName;
+        if(getBass()->getName()!=getRoot()->getName()){
+            //slash chord
+            fullName = getRoot()->getDiatonicName() + name+"/"+getBass()->getDiatonicName();
+        }else if(polychords.size()>0){
+            //ignoring for the moment more than one nested polychord...
+            fullName = getRoot()->getDiatonicName() + name+"/"+getBass()->getDiatonicName()+"|"+polychords[0]->getName();
+        }else{
+            //normal chord
+            fullName= getRoot()->getDiatonicName() + name;
+        }
+        return fullName;
+    }
     
-//===================================================================
-#pragma mark - INSTANCE METHODS
-//===================================================================
-  
+    //Careful calling this on empty pointers
+    bool isValid(){
+        return notes.size()>1;
+    }
+
 
     string getFullName(){
         return Chord::getFullName(name);
@@ -397,8 +401,6 @@ class Chord : public enable_shared_from_this<Chord>{
     }
 
 
-    
-    
     
     void setPolyChord(shared_ptr<Chord> pc){
         
@@ -540,16 +542,27 @@ class Chord : public enable_shared_from_this<Chord>{
 //===================================================================
 #pragma mark - STATIC METHODS
 //===================================================================
-  
-    
+      
+    //this is ok to check for empty pointers
+    static bool isValid(shared_ptr<Chord>c){
+        if(!c){
+            return false;
+        }else{
+            return c->notes.size()>1;
+        }
+    }
 
+    static bool isValidName(string str){
+        string name = ChordLookup[str];
+        if(name.size()>0){
+            return true;
+        }else{
+            return false;
+        }
+    }
     
     static string getFullName(string str){
-        //why do I need to instantiate here? Odd
-        Lookup m = ChordLookup;
-        string name = m[str];
-        
-        
+        string name = ChordLookup[str];//map entries without key instantiates to empty string
         if(name.size()>0){
             return name;
         }else{
@@ -3645,7 +3658,7 @@ class Chord : public enable_shared_from_this<Chord>{
     //corresponding friend function above, note: inside class
     inline ostream& operator<<(ostream& os, Chord& c){
         if(c.notes.size()==0){
-            os <<"Chord undefined"<<endl;
+            os <<"Chord invalid"<<endl;
         }else{
             //os <<"Chord "<<c.getRoot()->getDiatonicName() <<c.name<<" [ ";
             
@@ -3664,8 +3677,8 @@ class Chord : public enable_shared_from_this<Chord>{
     
     
     inline ostream& operator<<(ostream& os, shared_ptr<Chord>& c){
-        if(c->notes.size()==0){
-            os <<"Chord undefined"<<endl;
+        if(!Chord::isValid(c)){
+            os <<"Chord invalid"<<endl;
         }else{
             //os <<"Chord "<<c.getRoot()->getDiatonicName() <<c.name<<" [ ";
             

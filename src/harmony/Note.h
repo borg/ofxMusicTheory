@@ -12,6 +12,9 @@
 
 #include "ofMain.h"
 #include <map>
+#include "Poco/RegularExpression.h"
+using Poco::RegularExpression;
+
 
 namespace MusicTheory{
     
@@ -43,7 +46,7 @@ class Note : public enable_shared_from_this<Note>{
   public:
   
     
-    string name;
+    string name ="";
     //https://forum.ableton.com/viewtopic.php?f=1&t=148636
     //midi octave ranges are not standardised. I've adjusted to Ableton which begins on -2 = 0
     //middle C = 60 = C3 on Ableton
@@ -66,13 +69,46 @@ class Note : public enable_shared_from_this<Note>{
     };
     
 
+    
+//===================================================================
+#pragma mark - FACTORY METHODS
+//===================================================================
+  
+    //factory methods
+    shared_ptr<Note> copy(){
+        if(isValid()){
+            return shared_ptr<Note>(new Note(*this));//copy
+        }else{
+            ofLogError()<<__FUNCTION__<<" trying to copy empty note"<<endl;
+            return 0;
+        }
+    }
+
+    static shared_ptr<Note> create(string _name = "C",int _oct=3,Dynamics _dyn=Dynamics()){
+        if(Note::isValidName(_name)){
+            return shared_ptr<Note>(new Note(_name,_oct,_dyn));//new
+        }else{
+            
+            return 0;
+        }
+    }  
+  
+//===================================================================
+#pragma mark - INSTANCE METHODS
+//===================================================================
+  
+    bool isValid(){
+        return Note::isValidName(name);
+    }
+    
 
     void set(string _name = "C",int _oct=3,Dynamics _dyn=Dynamics()){
-        if (!isValidNote(name)){
-            ofLog()<< "The string "<<_name<<" is not a valid representation of a note"<<endl;
+        if (!Note::isValidName(_name)){
             return;
         }
         
+        
+        /*
         _name = ofToUpper(_name.substr(0,1))+_name.substr(1);
         
         //extract embedded oct eg. D#6
@@ -92,17 +128,16 @@ class Note : public enable_shared_from_this<Note>{
             }
         
         }
-
+        */
         name = _name;
         octave = _oct;
+        
+        fromShorthand(_name);
         dynamics = _dyn;
 	}
-    
-
 
     void set(int note, Dynamics _dyn=Dynamics(),bool absolute = true){
-        if (!isValidNote(name)){
-            ofLog()<< "The int "<<note<<" is not a valid representation of a note"<<endl;
+        if (!Note::isValidName(name)){
             return;
         }
         
@@ -163,11 +198,10 @@ class Note : public enable_shared_from_this<Note>{
             }
         }
 	}
-    
-    //TODO:Why argument not used here?!
+
     shared_ptr<Note> getAugmented(int i=1){
         shared_ptr<Note> n = copy();
-        n->augment();
+        n->augment(i);
         return n;
     }
     
@@ -192,7 +226,7 @@ class Note : public enable_shared_from_this<Note>{
     shared_ptr<Note> getDiminished(int i=1){
         //NotePtr n = *this;
         shared_ptr<Note> n = shared_ptr<Note>(new Note(*this));
-        n->diminish();
+        n->diminish(i);
         return n;
     }
     
@@ -407,18 +441,7 @@ class Note : public enable_shared_from_this<Note>{
     
     }
     
-    static shared_ptr<Note> fromInt(int val){
-       
-        int relVal = val % 12;
-        int oct = floor(val/12)-2;
-        
-        string n[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
-        
-        shared_ptr<Note> note = Note::create(n[relVal]);
-        note->setOctave(oct);
-        return note;
-        
-    }
+
     //not sure this is used...from Mingus
     string intToNote(int note){
         if(note<0 || note>11){
@@ -466,7 +489,7 @@ class Note : public enable_shared_from_this<Note>{
     string getShorthand(){
         
         int adjustedOct = floor(getInt()/12)-2;
-        string str = getDiatonicName()+"-"+ofToString(getAbsoluteOctave());
+        string str = getDiatonicName()+""+ofToString(getAbsoluteOctave());
         return str;
     }
     
@@ -535,73 +558,46 @@ class Note : public enable_shared_from_this<Note>{
         return name.substr(0,1);
     }
     
-    /*
-    Gives the traditional Helmhotz pitch notation.\
-         {{{
-         >>> Note("C-4").to_shorthand()
-         "c'"
-         >>> Note("C-3").to_shorthand()
-         'c'
-         >>> Note("C-2").to_shorthand()
-         'C'
-         >>> Note("C-1").to_shorthand()
-         'C,'
-         }}}"""
-    */
-    string toShorthand(){
-        string res="";
-       /* if(octave < 3){
-            res = name;
-        }else{
-            res = str.lower(self.name)
-        }
-        
-        int o = octave - 3;
-        while (o < -1){
-            res += ",";
-            o += 1;
-        }
-        while(o > 0){
-            res += "'";
-         */
-        return res;
-    }
-    
-    /*
-    Convert from traditional Helmhotz pitch notation.\
-    {{{
-    >>> Note().from_shorthand("C,,")
-    'C-0'
-    >>> Note().from_shorthand("C")
-    'C-2'
-    >>> Note().from_shorthand("c'")
-    'C-4'
-     }}}
-     */
 
-    void fromShorthand(string shorthand){
-        /*  name = ""
-        octave = 0
-    for x in shorthand:
-    if x in ['a', 'b', 'c', 'd', 'e', 'f', 'g']:
-    name = str.upper(x)
-    octave = 3
-    elif x in ['A', 'B', 'C', 'D', 'E', 'F', 'G']:
-    name = x
-    octave = 2
-    elif x in ["#", "b"]:
-    name += x
-    elif x == ',':
-    octave -= 1
-    elif x == "'":
-    octave += 1
-    return self.set_note(name, octave, {})*/
-    }
-  
+
+
+
+
+//===================================================================
+#pragma mark - STATIC METHODS
+//===================================================================
     
-    //Todo
-    bool isValidNote(string name){
-        return true;
+
+    
+     static bool isValid(shared_ptr<Note>n){
+        if(!n){
+            return false;
+        }else{
+            return n->isValid();
+        }
+    }
+    
+    static bool isValidName(string _name){
+        RegularExpression rex("[a-gA-G][[b|#]*]?[\-]?[0-9]?");
+        if(rex != _name){
+            ofLogError()<< "The string "<<_name<<" is not a valid representation of a note"<<endl;
+            return false;
+        }else{
+            return true;
+        }
+    }
+    
+    static shared_ptr<Note> fromInt(int val){
+       
+        int relVal = val % 12;
+        int oct = floor(val/12)-2;
+        
+        string n[] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
+        
+        shared_ptr<Note> note = Note::create(n[relVal]);
+        note->setOctave(oct);
+        return note;
+        
     }
     
     static int getNoteId(deque<Note> const & list, Note const & n , bool strict=false){
@@ -615,7 +611,7 @@ class Note : public enable_shared_from_this<Note>{
         return -1;
     }
 
-    static int getNoteId(deque<shared_ptr<Note> > list, shared_ptr<Note> n , bool strict=false){
+     static int getNoteId(deque<shared_ptr<Note> > list, shared_ptr<Note> n , bool strict=false){
         
         for(int i=0;i<list.size();i++){
             if(n->name==list[i]->name){
@@ -625,15 +621,7 @@ class Note : public enable_shared_from_this<Note>{
         
         return -1;
     }
-
-    //factory methods
-    shared_ptr<Note> copy(){
-        return shared_ptr<Note>(new Note(*this));//copy
-    }
-
-    static shared_ptr<Note> create(string _name = "C",int _oct=3,Dynamics _dyn=Dynamics()){
-        return shared_ptr<Note>(new Note(_name,_oct,_dyn));//new
-    }
+    
     
     //http://stackoverflow.com/questions/6039567/const-member-function
     static bool compare(const Note& a, const Note& b) {
@@ -645,10 +633,82 @@ class Note : public enable_shared_from_this<Note>{
         return (a->toInt() < b->toInt());
     }
     
+    
+    
+    
     //give access to private parts
     friend ostream& operator<<(ostream& os, const Note& n);
     
     friend ostream& operator<<(ostream& os, const shared_ptr<Note> &n);
+    
+//===================================================================
+#pragma mark -		PRIVATE METHODS
+//===================================================================
+    
+     private:
+    
+    /*
+    Convert from
+    E
+    c#3
+    Bbb4
+    or 
+    c#-1
+    Bbb-2
+    
+    Because Ableton is using negative -2 the use of the short dash
+    cannot be used to divide between note name and octave.
+     */
+   
+    void fromShorthand(string shorthand){
+       
+        //is octave appended?
+        if(ofStringTimesInString(shorthand,"-")){
+            vector<string>soct = ofSplitString(shorthand, "-");
+            if(isdigit(soct[1][0])){
+                octave = - ofToInt(soct[1]);
+            }
+            name = ofToUpper(soct[0].substr(0,1))+soct[0].substr(1,string::npos);
+        }else if(isdigit(shorthand.back())){
+            octave = ofToInt(shorthand.substr(shorthand.size()-1,1));
+            name = ofToUpper(shorthand.substr(0,1))+shorthand.substr(1,shorthand.size()-2);
+        }else{
+            name = ofToUpper(shorthand.substr(0,1))+shorthand.substr(1,string::npos);
+        }
+        
+        
+        /*
+        
+        int augs = ofStringTimesInString(shorthand, "#");
+        int dims = ofStringTimesInString(shorthand, "b");
+        int diff = augs - dims;
+        
+        transpose(diff);
+        */
+         
+        
+        /*
+        //extract embedded oct eg. D#6
+        if(ofIsStringInString(_name, "#") && _name.size()>2){
+            vector<string> div = ofSplitString(_name,"#");
+            if(isdigit(div[1][0])){
+                _oct = ofToInt(div[1]);
+            }
+        }else if(ofIsStringInString(_name, "b") && _name.size()>2){
+            vector<string> div = ofSplitString(_name,"b");
+            if(isdigit(div[1][0])){
+                _oct = ofToInt(div[1]);
+            }
+        }else if(_name.size()>1){
+            if(isdigit(_name[_name.size()-1])){
+                _oct = ofToInt(_name.substr(1,_name.size()-1));
+            }
+        
+        }
+        */
+
+    }
+  
     
 };//class
 
@@ -666,15 +726,17 @@ typedef NotePtr N;//short enough?
 //corresponding friend function above, note: inside class
 inline ostream& operator<<(ostream& os, Note& n){
     //name contains accidentals info getDiatonicName() doesn't
-     os <<"Note "<< n.getShorthand()<<" ("<<n.name<<"-"<<n.getInt()<<")";
+     os <<"Note "<< n.getShorthand()<<" ("<<n.name<<" "<<n.getInt()<<")";
     //os <<"Note "<< n.getShorthand() << " (vel: " << n.dynamics.velocity<<")";
     return os;
 }
 
 inline ostream& operator<<(ostream& os, NotePtr& n){
-    //name contains accidentals info getDiatonicName() doesn't
-     os <<"Note "<< n->getShorthand()<<" ("<<n->name<<"-"<<n->getInt()<<")";
-    //os <<"Note "<< n.getShorthand() << " (vel: " << n.dynamics.velocity<<")";
+    if(Note::isValid(n)){
+        os <<"Note "<< n->getShorthand()<<" ("<<n->name<<" "<<n->getInt()<<")";
+    }else{
+        os<<"Note invalid";
+    }
     return os;
 }
     

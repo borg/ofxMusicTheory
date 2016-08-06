@@ -128,6 +128,32 @@ class Diatonic {
             result.push_back(note);
         }
         
+        /*
+        
+        //this sorts all but doesn't start on key
+        sort(result.begin(),result.end(),Note::comparePtr);
+
+        
+       // vector<Note>::iterator it = find(result.begin(),result.end(),root);
+        int tonic = Note::getNoteId(result,key);
+        
+       // cout<<"tonic "<<tonic<<" "<<key<<" "<<result.size()<<endl;
+        
+        
+        deque<NotePtr> keySorted;
+        keySorted.insert(keySorted.begin(),result.begin()+tonic, result.end());
+        
+        //now in next octave
+        for(int i=0;i<tonic;i++){
+            result[i]->changeOctave(1);
+            keySorted.push_back(result[i]);
+        }
+        */
+        
+        
+        
+        
+        
         //set all to original octave
         int orgOct = key->getOctave();
         
@@ -140,16 +166,18 @@ class Diatonic {
 
         //+1 octave if passed tonic
         int tonic = Note::getNoteId(result,key);
-        
-
         deque<NotePtr> keySorted;
-        keySorted.insert(keySorted.begin(),result.begin()+tonic, result.end());
+        if(tonic>-1){
+            keySorted.insert(keySorted.begin(),result.begin()+tonic, result.end());
 
-        //now in next octave
-        for(int i=0;i<tonic;i++){
-            //assuming scales within one octave
-            result[i]->changeOctave(1);
-            keySorted.push_back(result[i]);
+            //now in next octave
+            for(int i=0;i<tonic;i++){
+                //assuming scales within one octave
+                result[i]->changeOctave(1);
+                keySorted.push_back(result[i]);
+            }
+        }else{
+            ofLogError()<<__FUNCTION__<<" Tonic not found"<<endl;
         }
 
         //Save original to cache and return a copy so cache won't be corrupted by
