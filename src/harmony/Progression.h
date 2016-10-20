@@ -792,7 +792,7 @@ class Progression : public enable_shared_from_this<Progression> {
             cout<<"chordStr "<<chordStr<<endl;
             
             //check for poly and slash chords
-            vector<string> slash = ofSplitString(chordStr, "/");//different bass
+            vector<string> slash = ofSplitString(chordStr, "/");//different bass, exclude 6/7, 6/9 etc
             vector<string> poly = ofSplitString(chordStr, "|");//combined chords
             
             
@@ -802,7 +802,7 @@ class Progression : public enable_shared_from_this<Progression> {
                 string top = Progression::getFunctionInRoman(poly[0],key,shorthand);
                 string bottom = Progression::getFunctionInRoman(poly[1],key,shorthand);
                 func = top+"|"+bottom;
-            }else if(slash.size()==2){
+            }else if(slash.size()==2 && !isdigit(slash[1][0])){
                 string top = Progression::getFunctionInRoman(slash[0],key,shorthand);
                 string bass = Progression::getFunctionInRoman(slash[1],key,shorthand);
                 func = top+"/"+bass;

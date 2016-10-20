@@ -2040,6 +2040,7 @@ private:
             {"pentatonicMajor",&Scale::getPentatonicMajor},
             {"pentatonicDominant",&Scale::getPentatonicDominant},
             {"pentatonicDominantbII",&Scale::getPentatonicDominantbII},
+            {"pentatonicDominantII",&Scale::getPentatonicDominantII},
             {"pentatonicDominantbIII",&Scale::getPentatonicDominantbIII},
             {"pentatonicDominantIII",&Scale::getPentatonicDominantIII},
             {"pentatonicDominantIV",&Scale::getPentatonicDominantIV},

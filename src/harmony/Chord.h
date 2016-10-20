@@ -238,6 +238,140 @@ class Chord : public enable_shared_from_this<Chord>{
 //===================================================================
 #pragma mark - FACTORY METHODS
 //===================================================================
+
+
+    /*
+     Takes a chord written in shorthand and returns the notes in the \
+     chord. The function can recognize triads, sevenths, sixths, ninths, elevenths, \
+     thirteenths, slashed chords and a number of altered chords. \
+     The second argument should not be given and is only used for a recursive call \
+     when a slashed chord or polychord is found. See [http://en.wikibooks.org/wiki/Music_Theory/Complete_List_of_Chord_Patterns Wikibooks] for a nice overview of chord patterns.
+     Example:
+     
+     >>> from_shorthand("Amin")
+     ["A", "C", "E"]
+     >>> from_shorthand("Am/M7")
+     ["F", "Ab", "C", "E"]
+     >>> from_shorthand("A")
+     ["A", "C#", "E"]
+     >>> from_shorthand("A/G")
+     ["G", "A", "C#", "E"]
+     >>> from_shorthand("Dm|G")
+     ["G", "B", "D", "F", "A"]
+     
+     
+     Recognised abbreviations: the letters `m` and `M` in the following abbreviations  \
+     can always be substituted by respectively `min`, `mi` or `-` and `maj` or `ma` (eg. \
+     `from_shorthand("Amin7") == from_shorthand("Am7")`, etc.).
+     * Triads: *'m'*, *'M'* or *''*, *'dim'*.
+     * Sevenths: *'m7'*, *'M7'*, *'7'*, *'m7b5'*, *'dim7'*, *'m/M7'* or *'mM7'*
+     * Augmented chords: *'aug'* or *'+'*, *'7#5'* or *'M7+5'*, *'M7+'*, *'m7+'*, *'7+'*
+     * Suspended chords: *'sus4'*, *'sus2'*, *'sus47'*, *'sus'*, *'11'*, *'sus4b9'* or *'susb9'*
+     * Sixths: *'6'*, *'m6'*, *'M6'*, *'6/7'* or *'67'*, *6/9* or *69*
+     * Ninths: *'9'*, *'M9'*, *'m9'*, *'7b9'*, *'7#9'*
+     * Elevenths: *'11'*, *'7#11'*, *'m11'*
+     * Thirteenths: *'13'*, *'M13'*, *'m13'*
+     * Altered chords: *'7b5'*, *'7b9'*, *'7#9'*, *'67'* or *'6/7'*
+     * Special: *'5'*, *'NC'*, *'hendrix'*
+     
+     
+     */
+    //alias
+    //Accepts C13
+    static shared_ptr<Chord> getChordFromString(string shorthand_string){
+        return Chord::fromShorthand(shorthand_string);
+    }
+    //accepts 13 Note("C")
+    static shared_ptr<Chord> getChordFromString(string shorthand_string,NotePtr note){
+        return Chord::chordFromShorthand(shorthand_string,note);
+    }
+    
+        
+        
+    //the python version of this is rubbish
+    static shared_ptr<Chord> fromShorthand(string shorthand_string){
+        //Shrink shorthand_string to a format recognised by chord_shorthand
+        ofStringReplace(shorthand_string, "min", "m");
+        ofStringReplace(shorthand_string, "mi", "m");
+        ofStringReplace(shorthand_string, "-", "m");
+        ofStringReplace(shorthand_string, "maj", "M");
+        ofStringReplace(shorthand_string, "ma", "M");
+        
+        
+        
+        vector<string> slash = ofSplitString(shorthand_string, "/");//different bass
+        vector<string> poly = ofSplitString(shorthand_string, "|");//combined chords
+        
+        
+        string top = shorthand_string;
+        
+        
+        if(poly.size()==2){
+            top = poly[0];
+        }else if(slash.size()==2){
+            top = slash[0];
+        }
+
+        string name = Chord::getRootNote(top);
+        NotePtr note = Note::create(name);
+        string chordSymbol = Chord::getChordSymbol(top);
+        
+        //this retrives the actual notes
+
+        shared_ptr<Chord> chord = Chord::chordFromShorthand(chordSymbol,note);
+        //cout<<"::fromShorthand chordSymbol "<<chordSymbol<<" "<<chord->getName()<<endl;
+        //Chord::print(chord->notes);
+        chord->name = chordSymbol;
+        chord->setRoot(note);
+        
+        if(poly.size()==2){
+            //get polychord
+            string name = Chord::getRootNote(poly[1]);
+            NotePtr note = NotePtr(new Note(name));
+            string chordSymbol = Chord::getChordSymbol(poly[1]);//was top?
+            shared_ptr<Chord> chord2 = Chord::chordFromShorthand(chordSymbol,note);
+            shared_ptr<Chord> subchord = Chord::create();
+            
+            subchord->name = chordSymbol;
+            subchord->notes = chord->notes;
+            subchord->setRoot(note);
+            chord->setPolyChord(subchord);
+            
+            /*
+            ofPtr<Chord> subchord(new Chord());
+            subchord->name = chordSymbol;
+            subchord->notes = chord->notes;
+            subchord->setRoot(note);
+            
+            chord.polychords.push_back(subchord);
+            */
+            //no longer appending these...get all notes by calling getAllNotes
+            //chord->notes.insert(chord->notes.begin(), chord2.notes.begin(),chord2.notes.end());
+            
+        }else if(slash.size()==2 && !isdigit(slash[1][0])){
+            //add bass from slash chord..needs to be checked for format
+            NotePtr bass = NotePtr(new Note(slash[1]));
+            
+            chord->setBass(bass);
+            
+            /*
+            bass.octave = chord->notes[0].getOctaveDown().octave;
+            bass.octaveDown();//arbitrary hack ha ha
+            chord->notes.push_front(bass);
+             */
+        }else if(chord->notes.size()){
+            //adding bass note here...a bit arbitrarily
+           // chord->notes.push_front(chord->notes[0].getOctaveDown());
+            
+            //chord->setBass(chord->notes[0]);
+        }
+        
+        
+        return chord;
+        
+         
+    }
+
   
     
     static shared_ptr<Chord>create(string _name = ""){
@@ -572,12 +706,15 @@ class Chord : public enable_shared_from_this<Chord>{
     }
     
     static vector<string> getAllKnownChords(){
-        vector<string> chords;
-        typedef map<string, string>::iterator it_type;
-         for(it_type iterator = ChordLookup.begin(); iterator != ChordLookup.end(); iterator++) {
-             chords.push_back(iterator->first);
+        static vector<string> _allchords;
+        
+        if(_allchords.size() == 0){
+            typedef map<string, string>::iterator it_type;
+            for(it_type iterator = ChordLookup.begin(); iterator != ChordLookup.end(); iterator++) {
+                _allchords.push_back(iterator->first);
+            }
          }
-        return chords;
+        return _allchords;
         
     }
     
@@ -1440,7 +1577,7 @@ class Chord : public enable_shared_from_this<Chord>{
     
     static shared_ptr<Chord> augmentedMajorSeventh(NotePtr note){
         shared_ptr<Chord> chord = Chord::augmentedTriad(note);
-        chord->name = "M7+";
+        chord->name = "M7+5";
         chord->setRoot(note);
         NotePtr n = Interval::majorSeventh(note);
         chord->notes.push_back(n);
@@ -1460,7 +1597,7 @@ class Chord : public enable_shared_from_this<Chord>{
     
     static shared_ptr<Chord> augmentedMinorSeventh(NotePtr note){
         shared_ptr<Chord> chord = Chord::minorTriad(note);
-        chord->name = "m7+";
+        chord->name = "m7+5";
         chord->setRoot(note);
         chord->notes[2]->augment();
         NotePtr n = Interval::minorSeventh(note);
@@ -1471,7 +1608,7 @@ class Chord : public enable_shared_from_this<Chord>{
     
     static shared_ptr<Chord> augmentedDominantSeventh(NotePtr note){
         shared_ptr<Chord> chord = Chord::augmentedTriad(note);
-        chord->name = "7+";
+        chord->name = "7+5";
         chord->setRoot(note);
         NotePtr n = Interval::minorSeventh(note);
         chord->notes.push_back(n);
@@ -2401,138 +2538,6 @@ class Chord : public enable_shared_from_this<Chord>{
 //===================================================================
     
     
-    /*
-     Takes a chord written in shorthand and returns the notes in the \
-     chord. The function can recognize triads, sevenths, sixths, ninths, elevenths, \
-     thirteenths, slashed chords and a number of altered chords. \
-     The second argument should not be given and is only used for a recursive call \
-     when a slashed chord or polychord is found. See [http://en.wikibooks.org/wiki/Music_Theory/Complete_List_of_Chord_Patterns Wikibooks] for a nice overview of chord patterns.
-     Example:
-     
-     >>> from_shorthand("Amin")
-     ["A", "C", "E"]
-     >>> from_shorthand("Am/M7")
-     ["F", "Ab", "C", "E"]
-     >>> from_shorthand("A")
-     ["A", "C#", "E"]
-     >>> from_shorthand("A/G")
-     ["G", "A", "C#", "E"]
-     >>> from_shorthand("Dm|G")
-     ["G", "B", "D", "F", "A"]
-     
-     
-     Recognised abbreviations: the letters `m` and `M` in the following abbreviations  \
-     can always be substituted by respectively `min`, `mi` or `-` and `maj` or `ma` (eg. \
-     `from_shorthand("Amin7") == from_shorthand("Am7")`, etc.).
-     * Triads: *'m'*, *'M'* or *''*, *'dim'*.
-     * Sevenths: *'m7'*, *'M7'*, *'7'*, *'m7b5'*, *'dim7'*, *'m/M7'* or *'mM7'*
-     * Augmented chords: *'aug'* or *'+'*, *'7#5'* or *'M7+5'*, *'M7+'*, *'m7+'*, *'7+'*
-     * Suspended chords: *'sus4'*, *'sus2'*, *'sus47'*, *'sus'*, *'11'*, *'sus4b9'* or *'susb9'*
-     * Sixths: *'6'*, *'m6'*, *'M6'*, *'6/7'* or *'67'*, *6/9* or *69*
-     * Ninths: *'9'*, *'M9'*, *'m9'*, *'7b9'*, *'7#9'*
-     * Elevenths: *'11'*, *'7#11'*, *'m11'*
-     * Thirteenths: *'13'*, *'M13'*, *'m13'*
-     * Altered chords: *'7b5'*, *'7b9'*, *'7#9'*, *'67'* or *'6/7'*
-     * Special: *'5'*, *'NC'*, *'hendrix'*
-     
-     
-     */
-    //alias
-    //Accepts C13
-    static shared_ptr<Chord> getChordFromString(string shorthand_string){
-        return Chord::fromShorthand(shorthand_string);
-    }
-    //accepts 13 Note("C")
-    static shared_ptr<Chord> getChordFromString(string shorthand_string,NotePtr note){
-        return Chord::chordFromShorthand(shorthand_string,note);
-    }
-    
-        
-        
-    //the python version of this is rubbish
-    static shared_ptr<Chord> fromShorthand(string shorthand_string){
-        //Shrink shorthand_string to a format recognised by chord_shorthand
-        ofStringReplace(shorthand_string, "min", "m");
-        ofStringReplace(shorthand_string, "mi", "m");
-        ofStringReplace(shorthand_string, "-", "m");
-        ofStringReplace(shorthand_string, "maj", "M");
-        ofStringReplace(shorthand_string, "ma", "M");
-        
-        
-        
-        vector<string> slash = ofSplitString(shorthand_string, "/");//different bass
-        vector<string> poly = ofSplitString(shorthand_string, "|");//combined chords
-        
-        
-        string top = shorthand_string;
-        
-        
-        if(poly.size()==2){
-            top = poly[0];
-        }else if(slash.size()==2){
-            top = slash[0];
-        }
-
-        string name = Chord::getRootNote(top);
-        NotePtr note = Note::create(name);
-        string chordSymbol = Chord::getChordSymbol(top);
-        
-        //this retrives the actual notes
-
-        shared_ptr<Chord> chord = Chord::chordFromShorthand(chordSymbol,note);
-        //cout<<"::fromShorthand chordSymbol "<<chordSymbol<<" "<<chord->getName()<<endl;
-        //Chord::print(chord->notes);
-        chord->name = chordSymbol;
-        chord->setRoot(note);
-        
-        if(poly.size()==2){
-            //get polychord
-            string name = Chord::getRootNote(poly[1]);
-            NotePtr note = NotePtr(new Note(name));
-            string chordSymbol = Chord::getChordSymbol(poly[1]);//was top?
-            shared_ptr<Chord> chord2 = Chord::chordFromShorthand(chordSymbol,note);
-            shared_ptr<Chord> subchord = Chord::create();
-            
-            subchord->name = chordSymbol;
-            subchord->notes = chord->notes;
-            subchord->setRoot(note);
-            chord->setPolyChord(subchord);
-            
-            /*
-            ofPtr<Chord> subchord(new Chord());
-            subchord->name = chordSymbol;
-            subchord->notes = chord->notes;
-            subchord->setRoot(note);
-            
-            chord.polychords.push_back(subchord);
-            */
-            //no longer appending these...get all notes by calling getAllNotes
-            //chord->notes.insert(chord->notes.begin(), chord2.notes.begin(),chord2.notes.end());
-            
-        }else if(slash.size()==2){
-            //add bass from slash chord..needs to be checked for format
-            NotePtr bass = NotePtr(new Note(slash[1]));
-            
-            chord->setBass(bass);
-            
-            /*
-            bass.octave = chord->notes[0].getOctaveDown().octave;
-            bass.octaveDown();//arbitrary hack ha ha
-            chord->notes.push_front(bass);
-             */
-        }else if(chord->notes.size()){
-            //adding bass note here...a bit arbitrarily
-           // chord->notes.push_front(chord->notes[0].getOctaveDown());
-            
-            //chord->setBass(chord->notes[0]);
-        }
-        
-        
-        return chord;
-        
-         
-    }
-    
     static vector<string> determineDiad(deque<NotePtr> diad, bool shorthand = false, bool allowInversions = true){
        vector<string> inversions;
         if (diad.size() != 2){
@@ -2861,6 +2866,7 @@ class Chord : public enable_shared_from_this<Chord>{
             {"M7+",&Chord::augmentedMajorSeventh},
             {"M7+5",&Chord::augmentedMajorSeventh},
             
+            {"7+5",&Chord::augmentedDominantSeventh},
             {"7+",&Chord::augmentedDominantSeventh},
             {"7#5",&Chord::augmentedDominantSeventh},
             
