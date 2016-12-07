@@ -135,7 +135,10 @@ class Progression : public enable_shared_from_this<Progression> {
         string bass="";
         string chordBottom="";
         
-        if(slash.size()==2){
+        
+        bool isSlash = Chord::isSlashChord(chordFunction);
+        //TODO: Test slash chords for romans
+        if(isSlash){
             chordTop = slash[0];
             bass = slash[1];
         }else if(poly.size()==2){
@@ -149,7 +152,7 @@ class Progression : public enable_shared_from_this<Progression> {
         ChordTuple tuple = Progression::parse(chordTop);
         ChordPtr chord = Progression::tupleToChord(tuple,key);
        
-         if(slash.size()==2){
+         if(isSlash){
             ChordTuple bassTuple = Progression::parse(bass);
             ChordPtr bassNote = Progression::tupleToChord(bassTuple,key);
             chord->setBass(bassNote->notes[0]);
@@ -177,7 +180,16 @@ class Progression : public enable_shared_from_this<Progression> {
      Doesn't work?
      */
     static vector<string> getFunctionFromChord(ChordPtr chord, NotePtr key = Note::create("C")){
-        vector<string> prog = Progression::determine(chord->notes,key,true,true,true);//not sure about trues here when only returning one...unnecessary?
+        vector<string> prog;
+        if(!chord){
+            ofLogError()<<"Progression::getFunctionFromChord failed. No chord"<<endl;
+            return prog;
+        }
+        if(!chord->notes.size()){
+            ofLogError()<<"Progression::getFunctionFromChord failed. No chord notes"<<endl;
+            return prog;
+        }
+        prog = Progression::determine(chord->notes,key,true,false,false);//not sure about trues here when only returning one...unnecessary?
         return prog;
     }
     
@@ -191,7 +203,7 @@ class Progression : public enable_shared_from_this<Progression> {
     }
     
     static ChordPtr tupleToChord(ChordTuple tuple, NotePtr key){
-        ChordPtr chord = Chord::create();
+        ChordPtr chord;
         NotePtr transKey = key;
         
         
@@ -205,7 +217,7 @@ class Progression : public enable_shared_from_this<Progression> {
             chord = Progression::getChordFromRoman(tuple.roman, transKey);
         }else{
             chord = Progression::getChordFromRoman(tuple.roman, transKey);
-            if(chord->isValid()){
+            if(chord){
                 chord = Chord::chordFromShorthand(tuple.suffix,chord->notes[0]);//add dim etc
             }else{
                 ofLogWarning()<<"Progression:: tupleToChord failed to find chord "<<tuple.roman<<endl;
@@ -295,7 +307,7 @@ class Progression : public enable_shared_from_this<Progression> {
     static ChordPtr getChordFromRoman(string romanSymbol,NotePtr key){
         if(romanSymbol ==""){
             cout<<"Progression::getChordFromRoman empty symbol"<<endl;
-            return Chord::create();
+            return 0;
         }
         
         ChordPtr cc = Chord::create();
@@ -776,12 +788,13 @@ class Progression : public enable_shared_from_this<Progression> {
         }
         
         
-        cout<<"Progression::determine"<<endl;
-        Chord::print(notes);
+        //cout<<"Progression::determine"<<endl;
+        //Chord::print(notes);
         
         vector<string> type_of_chord = Chord::determine(notes, true, useInversions, usePoly);//shorthand,inversion,poly
         
         if(!type_of_chord.size()){
+            cout<<endl;
             Chord::print(notes);
             ofLogWarning()<<" don't give a type"<<endl;
         }
@@ -789,10 +802,10 @@ class Progression : public enable_shared_from_this<Progression> {
 
         for(int i=0;i<type_of_chord.size();i++){
             string chordStr = type_of_chord[i];
-            cout<<"chordStr "<<chordStr<<endl;
+           // cout<<"chordStr "<<chordStr<<endl;
             
             //check for poly and slash chords
-            vector<string> slash = ofSplitString(chordStr, "/");//different bass, exclude 6/7, 6/9 etc
+            vector<string> slash = ofSplitString(chordStr, "/");//different bass
             vector<string> poly = ofSplitString(chordStr, "|");//combined chords
             
             
@@ -802,7 +815,7 @@ class Progression : public enable_shared_from_this<Progression> {
                 string top = Progression::getFunctionInRoman(poly[0],key,shorthand);
                 string bottom = Progression::getFunctionInRoman(poly[1],key,shorthand);
                 func = top+"|"+bottom;
-            }else if(slash.size()==2 && !isdigit(slash[1][0])){
+            }else if(Chord::isSlashChord(chordStr)){
                 string top = Progression::getFunctionInRoman(slash[0],key,shorthand);
                 string bass = Progression::getFunctionInRoman(slash[1],key,shorthand);
                 func = top+"/"+bass;
@@ -810,14 +823,22 @@ class Progression : public enable_shared_from_this<Progression> {
                 func = Progression::getFunctionInRoman(chordStr,key,shorthand);
 
             }
-            ofLogVerbose()<<chordStr<<" is "<<func<<" in key "<<key->getName()<<endl;
-            // Add to results
-            result.push_back(func);
+            
+            if(func == ""){
+                ofLogError()<<chordStr<<" cannot be parsed by Progression::determine"<<endl;
+            }else{
+                //ofLogVerbose()<<chordStr<<" is "<<func<<" in key "<<key->getName()<<endl;
+                // Add to results
+                result.push_back(func);
+            }
         }
         
         return result;
     }
     
+    /*
+    TODO: Use Interval::toRoman and simplify
+    */
                                                                             
     static string getFunctionInRoman(string chordStr,NotePtr key, bool shorthand = true){
         
@@ -840,7 +861,12 @@ class Progression : public enable_shared_from_this<Progression> {
 
         
         ChordPtr chord = Chord::getChordFromString(chordStr);
-        cout<<"Determine function for "<<chordStr<<" "<<chord->name<<endl;
+        
+        if(!chord){
+            ofLogError()<<"Chord "<<chordStr<<" not recognied by Progression::getFunctionInRoman"<<endl;
+            return "";
+        }
+        //cout<<"Determine function for "<<chordStr<<" "<<chord->name<<endl;
         NotePtr root = chord->getRoot();
         
         //string chord_type = chord.getChordSymbol();

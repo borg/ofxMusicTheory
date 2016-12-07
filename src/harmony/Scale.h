@@ -76,11 +76,20 @@ Any chord found in this list will replace these options for only that chord
         //Augmented Chord
 		{"aug","augmented,pentatonicMinorbIII"},
 		{"+","augmented,pentatonicMinorbIII"},
-		{"7#5","augmented"},
-		{"M7+5","melodicMinorIII"},//lydian aug
-		{"M7+","augmented,hindu"},
-		{"m7+","augmented,aeolian,dorian,pentatonicMinorbIII"},
-		{"7+","melodicMinorV,augmented,pentatonicMinorbIII"},//mixolydian b6
+		
+        
+        //M
+		{"M7+5","melodicMinorIII,augmented,hindu"},//lydian aug
+		{"M7+","melodicMinorIII,augmented,hindu"},
+        
+        //m
+		{"m7+","aeolian,dorian,phrygian,pentatonicMinorbIII"},
+        {"m7+5","aeolian,dorian,phrygian,pentatonicMinorbIII"},
+        
+        //Dom
+		{"7+","melodicMinorVII,melodicMinorV,pentatonicMinorbIII,wholenote"},//mixolydian b6
+        {"7+5","melodicMinorVII,melodicMinorV,pentatonicMinorbIII,wholenote"},
+        {"7#5","melodicMinorVII,melodicMinorV,pentatonicMinorbIII,wholenote"},
         
         //Suspended Chord
 		{"sus47","pentatonicMinorV,dorian,aeolian,phrygian,mixolydian"},
@@ -132,6 +141,7 @@ Any chord found in this list will replace these options for only that chord
         
         //Altered Chord b9 #9 #11 b13
 		{"7b5","melodicMinorIV"},//lydian dominant
+        {"7+#9","melodicMinorVII"},
 		
         //Special
 		{"hendrix","blues,pentatonicMinorbIII"},
@@ -240,6 +250,153 @@ class Scale : public enable_shared_from_this<Scale> {
         return true;
         
     }
+    
+
+    
+    static vector<string> getAllKnownScales(){
+        static vector<string>_knownScales = {
+            "ionian",
+            "dorian",
+            "phrygian",
+            "lydian",
+            "mixolydian",
+            "aeolian",
+            "locrian",
+            "halfDiminished",
+            "pentatonicMinor",
+            "pentatonicMinorbII",
+            "pentatonicMinorII",
+            "pentatonicMinorbIII",
+            "pentatonicMinorIII",
+            "pentatonicMinorIV",
+            "pentatonicMinorbV",
+            "pentatonicMinorV",
+            "pentatonicMinorbVI",
+            "pentatonicMinorVI",
+            "pentatonicMinorbVII",
+            "pentatonicMinorVII",
+            "pentatonicMajor",
+            "pentatonicDominant",
+            "pentatonicDominantbII",
+            "pentatonicDominantII",
+            "pentatonicDominantbIII",
+            "pentatonicDominantIII",
+            "pentatonicDominantIV",
+            "pentatonicDominantbV",
+            "pentatonicDominantV",
+            "pentatonicDominantbVI",
+            "pentatonicDominantVI",
+            "pentatonicDominantbVII",
+            "pentatonicDominantVII",
+            "melodicMinor",
+            "melodicMinorII",
+            "melodicMinorIII",
+            "augmented",
+            "melodicMinorII",
+            "melodicMinorIII",
+            "melodicMinorIV",
+            "melodicMinorV",
+            "melodicMinorVI",
+            "melodicMinorVII",
+            "naturalMinor",
+            "harmonicMinor",
+            "flamenco",
+            "diminished",
+            "bebopDominant",
+            "blues",
+            "lydianDiminished",
+            "lydianDominant",
+            "inSen",
+            "hirajoshi",
+            "hindu",
+            "chromatic",
+            "wholenote"};
+        return _knownScales;
+    }
+    
+    
+        
+    static vector<string> getAllDiatonicScales(){
+        static vector<string>_diaScales = {
+            "ionian",
+            "dorian",
+            "phrygian",
+            "lydian",
+            "mixolydian",
+            "aeolian",
+            "locrian"};
+        return _diaScales;
+    }
+    
+        
+    static vector<string> getAllPentatonicScales(){
+        static vector<string>_pentatonicScales = {
+            "pentatonicMinor",
+            "pentatonicMinorbII",
+            "pentatonicMinorII",
+            "pentatonicMinorbIII",
+            "pentatonicMinorIII",
+            "pentatonicMinorIV",
+            "pentatonicMinorbV",
+            "pentatonicMinorV",
+            "pentatonicMinorbVI",
+            "pentatonicMinorVI",
+            "pentatonicMinorbVII",
+            "pentatonicMinorVII",
+            "pentatonicMajor",
+            "pentatonicDominant",
+            "pentatonicDominantbII",
+            "pentatonicDominantII",
+            "pentatonicDominantbIII",
+            "pentatonicDominantIII",
+            "pentatonicDominantIV",
+            "pentatonicDominantbV",
+            "pentatonicDominantV",
+            "pentatonicDominantbVI",
+            "pentatonicDominantVI",
+            "pentatonicDominantbVII",
+            "pentatonicDominantVII"};
+        return _pentatonicScales;
+    }
+    
+        
+    static vector<string> getAllMelodicMinorScales(){
+        static vector<string>_melMinScales = {
+            "melodicMinor",
+            "melodicMinorII",
+            "melodicMinorIII",
+            "augmented",
+            "melodicMinorII",
+            "melodicMinorIII",
+            "melodicMinorIV",
+            "melodicMinorV",
+            "melodicMinorVI",
+            "melodicMinorVII",
+            "lydianDiminished",
+            "lydianDominant"};
+        return _melMinScales;
+    }
+    
+    
+    static vector<string> getAllDiminishedScales(){
+        static vector<string>_dimScales = {
+            "halfDiminished",
+            "diminished",
+            "lydianDiminished",
+        };
+        return _dimScales;
+    }
+    
+    static vector<string> getAllEthnicScales(){
+        static vector<string>_ethnicScales = {
+            "flamenco",
+            "inSen",
+            "hirajoshi",
+            "hindu"};
+        return _ethnicScales;
+    }
+  
+    
     
 //===================================================================
 #pragma mark - Diatonic scales
@@ -597,6 +754,8 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     /*
      Lydian augmented
+     Third of melodic minors
+     https://en.wikipedia.org/wiki/Lydian_augmented_scale
      */
     
     static deque<NotePtr> melodicMinorIII(NotePtr note){
@@ -610,7 +769,7 @@ class Scale : public enable_shared_from_this<Scale> {
         if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "melodicMinorIII";
-        scale->notes = Scale::melodicMinor(note->copy());
+        scale->notes = Scale::melodicMinorIII(note->copy());
         return scale;
     }
     
@@ -621,7 +780,7 @@ class Scale : public enable_shared_from_this<Scale> {
         if(!Note::isValid(note)){return 0;}
         shared_ptr<Scale> scale = Scale::create();
         scale->name = "lydianAugmented";
-        scale->notes = Scale::melodicMinor(note->copy());
+        scale->notes = Scale::melodicMinorIII(note->copy());
         return scale;
     }
     
@@ -1578,6 +1737,7 @@ class Scale : public enable_shared_from_this<Scale> {
     /*
      Hexatonal
      http://stormhorn.com/2009/08/24/the-augmented-scale/
+     http://www.javierarau.com/augmented-scale-theory/
      
      */
     
@@ -2025,6 +2185,7 @@ private:
             {"mixolydian",&Scale::getMixolydian},
             {"aeolian",&Scale::getAeolian},
             {"locrian",&Scale::getLocrian},
+            {"halfDiminished",&Scale::getLocrian},
             {"pentatonicMinor",&Scale::getPentatonicMinor},
             {"pentatonicMinorbII",&Scale::getPentatonicMinorbII},
             {"pentatonicMinorII",&Scale::getPentatonicMinorII},
@@ -2067,15 +2228,19 @@ private:
             {"bebopDominant",&Scale::getBebopDominant},
             {"blues",&Scale::getBlues},
             {"lydianDiminished",&Scale::getLydianDiminished},
-            {"lydianDominant",&Scale::getLydianDominant}
+            {"lydianDominant",&Scale::getLydianDominant},
+            {"inSen",&Scale::getInSen},
+            {"hirajoshi",&Scale::getHirajoshi},
+            {"hindu",&Scale::getHindu},
+            {"chromatic",&Scale::getChromatic},
+            {"wholenote",&Scale::getWholeNote}
         };
         
         
         return _scaleLookup;
          
     }
-    
-};
+    };
     
 
 typedef shared_ptr<Scale> ScalePtr;

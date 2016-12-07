@@ -129,6 +129,10 @@ namespace MusicTheory{
         {"7#5"," augmented major seventh"},
         {"7#5#9"," augmented major seventh sharp ninth"},
         {"7#9#5"," augmented major seventh sharp ninth"},
+        {"7+#9"," augmented major seventh sharp ninth"},
+        {"+7#9"," augmented major seventh sharp ninth"},
+        
+        
 		{"M7+5"," augmented major seventh"},
 		{"M7+"," augmented major seventh"},
 		{"m7+"," augmented minor seventh"},
@@ -224,14 +228,18 @@ class Chord : public enable_shared_from_this<Chord>{
     
     void set(string _name = "C"){
         shared_ptr<Chord> c = Chord::fromShorthand(_name);
-        if(c->isValid()){
-            name = c->name;
-            notes = c->notes;
-        
-            NotePtr r = NotePtr(new Note(getRootNote(_name)));
-            setRoot(r);
+        if(c){
+            if(c->isValid()){
+                name = c->name;
+                notes = c->notes;
+            
+                NotePtr r = NotePtr(new Note(getRootNote(_name)));
+                setRoot(r);
+            }else{
+                ofSystemAlertDialog("Chord "+_name+" not recognized");
+            }
         }else{
-            ofSystemAlertDialog("Chord "+_name+" not recognized");
+        ofSystemAlertDialog("Chord "+_name+" not recognized");
         }
     }
     
@@ -305,10 +313,10 @@ class Chord : public enable_shared_from_this<Chord>{
         
         string top = shorthand_string;
         
-        
+        bool isSlashChord = Chord::isSlashChord(shorthand_string);
         if(poly.size()==2){
             top = poly[0];
-        }else if(slash.size()==2){
+        }else if(isSlashChord){
             top = slash[0];
         }
 
@@ -319,6 +327,12 @@ class Chord : public enable_shared_from_this<Chord>{
         //this retrives the actual notes
 
         shared_ptr<Chord> chord = Chord::chordFromShorthand(chordSymbol,note);
+        
+        if(!chord){
+            ofLogError()<<"Chord::fromShorthand "<<chordSymbol<<" returns no chord"<<endl;
+            return 0;
+        }
+        
         //cout<<"::fromShorthand chordSymbol "<<chordSymbol<<" "<<chord->getName()<<endl;
         //Chord::print(chord->notes);
         chord->name = chordSymbol;
@@ -348,7 +362,7 @@ class Chord : public enable_shared_from_this<Chord>{
             //no longer appending these...get all notes by calling getAllNotes
             //chord->notes.insert(chord->notes.begin(), chord2.notes.begin(),chord2.notes.end());
             
-        }else if(slash.size()==2 && !isdigit(slash[1][0])){
+        }else if(isSlashChord){
             //add bass from slash chord..needs to be checked for format
             NotePtr bass = NotePtr(new Note(slash[1]));
             
@@ -533,12 +547,22 @@ class Chord : public enable_shared_from_this<Chord>{
 	void octaveDown(){
         changeOctave(-1);
     }
-
+    
+    void transpose(int interval){
+        for(NotePtr note:notes){
+            note->transpose(interval);
+        }
+    }
+    
+    
+    shared_ptr<Chord> getTransposed(int interval){
+        shared_ptr<Chord> copy = this->copy();
+        copy->transpose(interval);
+        return copy;
+    }
 
     
     void setPolyChord(shared_ptr<Chord> pc){
-        
-        
         shared_ptr<Chord> subchord = Chord::create();
         subchord->name = pc->getChordSymbol();
         subchord->notes = pc->notes;
@@ -715,10 +739,101 @@ class Chord : public enable_shared_from_this<Chord>{
             }
          }
         return _allchords;
-        
     }
     
- 
+
+
+    static vector<string> getAllMajorChords(){
+        static vector<string> _allmajchords;
+        
+        if(_allmajchords.size() == 0){
+            typedef map<string, string>::iterator it_type;
+            for(it_type iterator = ChordLookup.begin(); iterator != ChordLookup.end(); iterator++) {
+                shared_ptr<Chord>chord = Chord::create("C"+iterator->first);
+                if(chord->isMajor()){
+                    _allmajchords.push_back(iterator->first);
+                }
+            }
+         }
+        return _allmajchords;
+    }
+    
+    
+    
+    static vector<string> getAllMinorChords(){
+        static vector<string> _allminchords;
+        
+        if(_allminchords.size() == 0){
+            typedef map<string, string>::iterator it_type;
+            for(it_type iterator = ChordLookup.begin(); iterator != ChordLookup.end(); iterator++) {
+                shared_ptr<Chord>chord = Chord::create("C"+iterator->first);
+                if(chord->isMinor()){
+                    _allminchords.push_back(iterator->first);
+                }
+            }
+         }
+        return _allminchords;
+    }
+    
+    
+    static vector<string> getAllDominantChords(){
+        static vector<string> _alldomchords;
+        
+        if(_alldomchords.size() == 0){
+            typedef map<string, string>::iterator it_type;
+            for(it_type iterator = ChordLookup.begin(); iterator != ChordLookup.end(); iterator++) {
+                shared_ptr<Chord>chord = Chord::create("C"+iterator->first);
+                if(chord->isDominant()){
+                    _alldomchords.push_back(iterator->first);
+                }
+            }
+         }
+        return _alldomchords;
+    }
+    
+    static vector<string> getAllDiminishedChords(){
+        static vector<string> _alldimchords;
+        
+        if(_alldimchords.size() == 0){
+            typedef map<string, string>::iterator it_type;
+            for(it_type iterator = ChordLookup.begin(); iterator != ChordLookup.end(); iterator++) {
+                shared_ptr<Chord>chord = Chord::create("C"+iterator->first);
+                if(chord->isDiminished()){
+                    _alldimchords.push_back(iterator->first);
+                }
+            }
+         }
+        return _alldimchords;
+    }
+    
+
+
+    
+    /*
+    G/A is a slash chord
+    Gm/M7 and G6/9 aren't
+    */
+    static bool isSlashChord(string _name){
+        /*
+        
+        vector<string> slash = ofSplitString(_name,"/'");
+        if(slash.size()==0){
+            return false;
+        }else{
+            !isdigit(slash[1][0])
+        
+        
+        }*/
+        
+        
+        RegularExpression rex("\/[a-gA-G]");
+        if(rex != _name){
+            //ofLogError()<< "The string "<<_name<<" is not a slash chord"<<endl;
+            return false;
+        }else{
+            return true;
+        }
+    }
     
 //===================================================================
 #pragma mark - Triads
@@ -1057,7 +1172,13 @@ class Chord : public enable_shared_from_this<Chord>{
         return halfDiminishedSeventh(note);
     }
     
-    
+    static shared_ptr<Chord> minorSeventhFlatNinth(NotePtr note){
+        shared_ptr<Chord> chord = Chord::minorNinth(note);
+        chord->name = "m7b9";
+        chord->setRoot(note);
+        chord->notes[4]->diminish();
+        return halfDiminishedSeventh(note);
+    }
     
     
     
@@ -1276,6 +1397,22 @@ class Chord : public enable_shared_from_this<Chord>{
         NotePtr n = Interval::minorSecond(note);
         n->changeOctave(1);
         chord->notes[4]= n;//lower ninth
+        return chord;
+    }
+    
+    
+    /*
+    7b9b5
+    */
+    static shared_ptr<Chord> dominantFlatNinthFlatFifth(NotePtr note){
+        shared_ptr<Chord> chord = Chord::dominantNinth(note);
+        chord->name = "7b9b5";
+        chord->setRoot(note);
+        chord->notes[2]->diminish();
+        NotePtr n = Interval::minorSecond(note);
+        n->changeOctave(1);
+        chord->notes[4]= n;//lower ninth
+        
         return chord;
     }
     
@@ -1616,7 +1753,7 @@ class Chord : public enable_shared_from_this<Chord>{
     }
     
     static shared_ptr<Chord> augmentedDominantSharpNinth(NotePtr note){
-        shared_ptr<Chord> chord = Chord::dominantNinth(note);
+        shared_ptr<Chord> chord = Chord::dominantSharpNinth(note);
         chord->name = "7+#9";
         chord->setRoot(note);
         chord->notes[2]->augment();
@@ -2199,8 +2336,10 @@ class Chord : public enable_shared_from_this<Chord>{
      This does not return a copy
      */
     static void invert(deque<NotePtr> &notes){
-        notes.push_back(notes.front()->getOctaveUp());
-        notes.pop_front();
+        if(notes.size()>1){
+            notes.push_back(notes.front()->getOctaveUp());
+            notes.pop_front();
+        }
     }
     
     /*
@@ -2862,16 +3001,20 @@ class Chord : public enable_shared_from_this<Chord>{
             
             {"m7+5",&Chord::augmentedMinorSeventh},//twin peaks
             {"m7#5",&Chord::augmentedMinorSeventh},
+            {"m7+",&Chord::augmentedMinorSeventh},
             
             {"M7+",&Chord::augmentedMajorSeventh},
             {"M7+5",&Chord::augmentedMajorSeventh},
             
             {"7+5",&Chord::augmentedDominantSeventh},
             {"7+",&Chord::augmentedDominantSeventh},
+            {"+7",&Chord::augmentedDominantSeventh},
             {"7#5",&Chord::augmentedDominantSeventh},
             
             {"7#5#9",&Chord::augmentedDominantSharpNinth},
             {"7+#9",&Chord::augmentedDominantSharpNinth},
+            {"+7#9",&Chord::augmentedDominantSharpNinth},
+            {"+#9",&Chord::augmentedDominantSharpNinth},
             {"7#9#5",&Chord::augmentedDominantSharpNinth},
        
         
@@ -2921,6 +3064,8 @@ class Chord : public enable_shared_from_this<Chord>{
             {"Maj9",&Chord::majorNinth},
             {"m9",&Chord::minorNinth},
             {"m9b5",&Chord::halfDiminishedNinth},
+            {"7b9b5",&Chord::dominantFlatNinthFlatFifth},
+            {"m7b9",&Chord::minorSeventhFlatNinth},
            
             
             //Elevenths
@@ -2956,8 +3101,8 @@ class Chord : public enable_shared_from_this<Chord>{
             if(_chordFuncLookup[c]){
                 return _chordFuncLookup[c](note);
             }else{
-                ofLog()<<"Warning: Chord abbr "<<note->getName()<<c<<" not recognized"<<endl;
-                return Chord::create();
+                ofLog()<<"Warning: Chord abbr "<<note->getName()<<" "<<c<<" not recognized"<<endl;
+                return 0;
             }
 
 //
@@ -3321,7 +3466,12 @@ class Chord : public enable_shared_from_this<Chord>{
                 }else if( int4 == 9){
                     result->push_back("13,"+ofToString(tries)+ ","+ root);
                 }
-             }else if( chStr == "M6"){
+            }else if( chStr == "m7+"){
+                if (int4 == 3){
+                    result->push_back("+7#9,"+ofToString(tries)+ ","+ root);
+                }
+            
+            }else if( chStr == "M6"){
                 if (int4 == 2){
                     result->push_back("6/9,"+ofToString(tries)+ ","+ root);
                 }else if( int4 == 11){

@@ -588,7 +588,10 @@ class Note : public enable_shared_from_this<Note>{
     }
     
     static shared_ptr<Note> fromInt(int val){
-       
+        if(val<0){
+            ofLogError()<< "Negative note value not allowed "<<val<<endl;
+            return 0;
+        }
         int relVal = val % 12;
         int oct = floor(val/12)-2;
         

@@ -72,7 +72,7 @@ class Intervals {
      */
     
     static NotePtr minorUnison(NotePtr note){
-        NotePtr n = Note::create(note);
+        NotePtr n = note->copy();
         n->diminish();
         return n;
     }
@@ -82,38 +82,38 @@ class Intervals {
     }
     
     static NotePtr augmentedUnison(NotePtr note){
-        NotePtr n = Note::create(note);
+        NotePtr n = note->copy();
         n->augment();
         return n;
     }
     
     static NotePtr minorSecond(NotePtr note){
-        NotePtr sec = Intervals::second(note.getNatural(), Note::create("C"));
+        NotePtr sec = Intervals::second(note->getNatural(), Note::create("C"));
         return Intervals::findInterval(note, sec, 1);
     }
     
     static NotePtr majorSecond(NotePtr note){
-        NotePtr sec = Intervals::second(note.getNatural(), Note::create("C"));
+        NotePtr sec = Intervals::second(note->getNatural(), Note::create("C"));
         return Intervals::findInterval(note, sec, 2);
     }
     
     static NotePtr minorThird(NotePtr note){
-       NotePtr trd = Intervals::third(note.getNatural(), Note::create("C"));
+       NotePtr trd = Intervals::third(note->getNatural(), Note::create("C"));
         return Intervals::findInterval(note, trd, 3);
     }
     
     static NotePtr majorThird(NotePtr note){
-       NotePtr trd = Intervals::third(note.getNatural(), Note::create("C"));
+       NotePtr trd = Intervals::third(note->getNatural(), Note::create("C"));
         return Intervals::findInterval(note, trd, 4);
     }
     
     static NotePtr minorFourth(NotePtr note){
-        NotePtr frt = Intervals::fourth(note.getNatural(), Note::create("C"));
+        NotePtr frt = Intervals::fourth(note->getNatural(), Note::create("C"));
         return Intervals::findInterval(note, frt, 4);
     }
     
     static NotePtr majorFourth(NotePtr note){
-        NotePtr frt = Intervals::fourth(note.getNatural(), Note::create("C"));
+        NotePtr frt = Intervals::fourth(note->getNatural(), Note::create("C"));
         return Intervals::findInterval(note, frt, 5);
     }
     
@@ -122,12 +122,12 @@ class Intervals {
     }
     
     static NotePtr minorFifth(NotePtr note){
-        NotePtr fif = Intervals::fifth(note.getNatural(), Note::create("C"));
+        NotePtr fif = Intervals::fifth(note->getNatural(), Note::create("C"));
         return Intervals::findInterval(note, fif, 6);
     }
     
     static NotePtr majorFifth(NotePtr note){
-        NotePtr fif = Intervals::fifth(note.getNatural(), Note::create("C"));
+        NotePtr fif = Intervals::fifth(note->getNatural(), Note::create("C"));
         return Intervals::findInterval(note, fif, 7);
     }
     
@@ -136,22 +136,22 @@ class Intervals {
     }
     
     static NotePtr minorSixth(NotePtr note){
-        NotePtr sth = Intervals::sixth(note.getNatural(), Note::create("C"));
+        NotePtr sth = Intervals::sixth(note->getNatural(), Note::create("C"));
         return Intervals::findInterval(note, sth, 8);
     }
     
     static NotePtr majorSixth(NotePtr note){
-        NotePtr sth = Intervals::sixth(note.getNatural(),Note::create("C"));
+        NotePtr sth = Intervals::sixth(note->getNatural(),Note::create("C"));
         return Intervals::findInterval(note, sth, 9);
     }
     
     static NotePtr minorSeventh(NotePtr note){
-        NotePtr sth = Intervals::seventh(note.getNatural(), Note::create("C"));
+        NotePtr sth = Intervals::seventh(note->getNatural(), Note::create("C"));
        return Intervals::findInterval(note, sth, 10);
     }
     
     static NotePtr majorSeventh(NotePtr note){
-        NotePtr sth = Intervals::seventh(note.getNatural(), Note::create("C"));
+        NotePtr sth = Intervals::seventh(note->getNatural(), Note::create("C"));
         return Intervals::findInterval(note, sth, 11);
     }
     
@@ -231,12 +231,12 @@ class Intervals {
         //Corner case for unisons ('A' and 'Ab', for instance)
         if(note1->getUnaltered() == note2->getUnaltered()){
             //get num of accidentals
-            int augs = Utils::occurenceNum(note1->name,"#");
-            int dims = Utils::occurenceNum(note1->name,"b");
+            int augs = ofStringTimesInString(note1->name,"#");
+            int dims = ofStringTimesInString(note1->name,"b");
             int x = augs-dims;
             
-            augs = Utils::occurenceNum(note2->name,"#");
-            dims = Utils::occurenceNum(note2->name,"b");
+            augs = ofStringTimesInString(note2->name,"#");
+            dims = ofStringTimesInString(note2->name,"b");
             int y = augs-dims;
         
             if (x == y){
@@ -270,10 +270,10 @@ class Intervals {
         //Other intervals
             
         vector<string> nNames = ofSplitString(fifths,",");
-        vector<string>::iterator it = find(nNames.begin(),nNames.end(),note1.getUnaltered());
+        vector<string>::iterator it = find(nNames.begin(),nNames.end(),note1->getUnaltered());
         int n1 = it-nNames.begin();
             
-        it = find(nNames.begin(),nNames.end(),note2.getUnaltered());
+        it = find(nNames.begin(),nNames.end(),note2->getUnaltered());
         int n2 = it-nNames.begin();
 
         
@@ -388,8 +388,8 @@ private:
         
         // We are practically done right now, but we need to be able to create
         // the minor seventh of Cb and get Bbb instead of B######### as the result
-        int augs = Utils::occurenceNum(note2->name,"#");
-        int dims = Utils::occurenceNum(note2->name,"b");
+        int augs = ofStringTimesInString(note2->name,"#");
+        int dims = ofStringTimesInString(note2->name,"b");
         
         int val =augs-dims;
         

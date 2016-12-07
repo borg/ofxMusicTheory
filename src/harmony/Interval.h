@@ -14,11 +14,29 @@
 #include "ofMain.h"
 #include "Note.h"
 #include "Diatonic.h"
+#include "Poco/RegularExpression.h"
+using Poco::RegularExpression;
+
 //class Note;
 namespace MusicTheory{
     
     typedef NotePtr (*IntervalFunctionPointer)(NotePtr);
     typedef map<int,IntervalFunctionPointer> IntervalFuncLookup;
+ 
+    static vector<string>romanNumerals = {
+            "I",
+            "bII",
+            "II",
+            "bIII",
+            "III",
+            "IV",
+            "bV",
+            "V",
+            "bVI",
+            "VI",
+            "bVII",
+            "VII"
+        };
     
 class Interval {
 
@@ -368,18 +386,16 @@ class Interval {
         }
         // [name, shorthand_name, half notes for major version of this interval]
         
-        //tell me nicer ways to do simple lists please..not used to C++ arrays
-        
-        vector< vector<string> > fifth_steps;
-        fifth_steps.push_back(ofSplitString("unison,1,0",","));
-        fifth_steps.push_back(ofSplitString("fifth,5,7",","));
-        fifth_steps.push_back(ofSplitString("second,2,2",","));
-        fifth_steps.push_back(ofSplitString("sixth,6,9",","));
-        fifth_steps.push_back(ofSplitString("third,3,4",","));
-        fifth_steps.push_back(ofSplitString("seventh,7,11",","));
-        fifth_steps.push_back(ofSplitString("fourth,4,5",","));
-        
-        
+
+        static vector< vector<string> > fifth_steps{
+        {"unison","1","0"},
+        {"fifth","5","7"},
+        {"second","2","2"},
+        {"sixth","6","9"},
+        {"third","3","4"},
+        {"seventh","7","11"},
+        {"fourth","4","5"}
+        };
        
         
         
@@ -480,6 +496,64 @@ class Interval {
         return n;
     }
     
+    /*
+    https://en.wikipedia.org/wiki/Roman_numeral_analysis
+    
+    Upper lower case for minor / major? Is it bVI or #V? 
+    Let's keep it simple and consistent.
+    */
+    
+    static string toRoman(int interval){
+     int diff = 0;
+        if(interval<0){
+            interval = (-interval)%12;
+            diff = 12-interval;
+        }else{
+            diff = interval%12;
+        }
+        return romanNumerals[diff];
+    }
+    
+    static string getRoman(int interval){
+        return Interval::toRoman(interval);
+    }
+    
+    
+    
+    static int fromRoman(string v){
+        ofStringReplace(v, " ", "");
+        
+        RegularExpression::Match match;
+        
+        RegularExpression accEx("[#b]*(?=[iIvV])");//find accidentals
+        string acc="";
+        if(accEx.match(v, match) != 0) {
+            acc = v.substr(0,match.length);
+        }
+        
+        
+        int augs = ofStringTimesInString(acc, "#");
+        int dims = ofStringTimesInString(acc, "b");
+
+        int accidentals = augs-dims;
+        string roman = v.substr((augs+dims));//remove accidentals
+      
+        RegularExpression romanEx("(?<!d)[iIvV]*");//find all romans not prefixed by d, thus exclude i in dim..
+        
+        if(romanEx.match(roman, match) != 0) {
+            roman = roman.substr(match.offset,match.length);
+        }
+        
+        roman = ofToUpper(roman);
+        
+        for(int i=0;i<romanNumerals.size();i++){
+            if(romanNumerals[i] == roman){
+                return i+accidentals;
+            }
+        }
+        ofLogError()<<"Roman "<<v<<" not found"<<endl;
+        return 0;
+    }
 private:
     
     /*

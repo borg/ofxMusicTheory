@@ -51,6 +51,7 @@ Change log:
 #include "ofMain.h"
 #include "Note.h"
 #include "Interval.h"
+#include "Intervals.h"
 #include "Chord.h"
 #include "Diatonic.h"
 #include "Scale.h"
