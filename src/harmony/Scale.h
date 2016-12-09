@@ -92,13 +92,19 @@ Any chord found in this list will replace these options for only that chord
         {"7#5","melodicMinorVII,melodicMinorV,pentatonicMinorbIII,wholenote"},
         
         //Suspended Chord
-		{"sus47","pentatonicMinorV,dorian,aeolian,phrygian,mixolydian"},
+		{"sus47","pentatonicMinorV,dorian,aeolian,phrygian,mixolydian"},//tricky as no min/maj third
         {"sus4","pentatonicMinorV,harmonicMinor,melodicMinor,pentatonicMinor,blues,aeolian,dorian,phrygian,mixolydian"},
 		{"sus2","harmonicMinor,melodicMinor,pentatonicMinor,blues"},
         {"sus","ionian,harmonicMinor,melodicMinor,pentatonicMinor,blues,aeolian,dorian,phrygian,mixolydian"},
 		{"11","mixolydian"},
 		{"sus4b9","melodicMinorII"},
 		{"susb9","melodicMinorII"},
+        {"sus9","pentatonicMinorV,dorian,aeolian,phrygian,mixolydian"},
+        {"sus49","pentatonicMinorV,dorian,aeolian,phrygian,mixolydian"},
+        
+
+        
+        
         
         //Sevenths
 		{"m7","dorian,aeolian,pentatonicMinor,pentatonicMinorII,pentatonicMinorV"},
@@ -127,11 +133,13 @@ Any chord found in this list will replace these options for only that chord
 		{"M9","lydian"},
 		{"m9","aeolian,dorian"},
         {"9#11","lydian"},
-        
+        {"m6/9","dorian"},
+        {"m6/9/11","dorian"},
         
         //Elevenths
 		{"7#11","melodicMinorIV"},
         {"m11","dorian,pentatonicMinorV,pentatonicMinorIV,pentatonicMinorIII,pentatonicMinor,blues"},
+        {"M7#11","lydian"},
         
         //Thirteenths
 		{"M13",""},
@@ -142,6 +150,10 @@ Any chord found in this list will replace these options for only that chord
         //Altered Chord b9 #9 #11 b13
 		{"7b5","melodicMinorIV"},//lydian dominant
         {"7+#9","melodicMinorVII"},
+        
+        
+        {"7+b9","melodicMinorVII"},
+        
 		
         //Special
 		{"hendrix","blues,pentatonicMinorbIII"},

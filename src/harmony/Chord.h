@@ -126,17 +126,19 @@ namespace MusicTheory{
 		{"aug"," augmented triad"},
 		{"+"," augmented triad"},
 		{"m7#5"," augmented minor seventh"},
-        {"7#5"," augmented major seventh"},
-        {"7#5#9"," augmented major seventh sharp ninth"},
-        {"7#9#5"," augmented major seventh sharp ninth"},
-        {"7+#9"," augmented major seventh sharp ninth"},
-        {"+7#9"," augmented major seventh sharp ninth"},
+        {"7#5"," augmented seventh"},
+        {"7#5#9"," augmented seventh sharp ninth"},
+        {"7#9#5"," augmented seventh sharp ninth"},
+        {"7+#9"," augmented seventh sharp ninth"},
+        {"+7#9"," augmented seventh sharp ninth"},
         
+        
+        {"7+b9"," augmented major seventh flat ninth"},
         
 		{"M7+5"," augmented major seventh"},
 		{"M7+"," augmented major seventh"},
 		{"m7+"," augmented minor seventh"},
-		{"7+"," augmented major seventh"},
+		{"7+"," augmented seventh"},
         
         
         
@@ -146,8 +148,10 @@ namespace MusicTheory{
 		{"sus2"," suspended second triad"},
 		{"sus"," suspended fourth triad"},
 		{"11"," eleventh"},
-		{"sus4b9"," suspended fourth ninth"},
-		{"susb9"," suspended fourth ninth"},
+		{"sus4b9"," suspended fourth flat 8ninth"},
+		{"susb9"," suspended fourth flat ninth"},
+        {"sus9"," suspended ninth"},
+		{"sus49"," suspended ninth"},
         
         //Sevenths
 		{"m7"," minor seventh"},
@@ -176,12 +180,15 @@ namespace MusicTheory{
 		{"7#9"," dominant sharp ninth"},
 		{"M9"," major ninth"},
 		{"m9"," minor ninth"},
+        {"m6/9"," minor sixth ninth"},
+        {"m6/9/11"," minor sixth ninth eleventh"},
         
         //Elevenths
 		{"7#11"," lydian dominant seventh"},
         {"9#11"," lydian dominant ninth"},
 		{"m11"," minor eleventh"},
         {"m9/11"," minor ninth eleventh"},
+        {"M7#11"," major seventh sharp eleventh"},
         
         //Thirteenths
 		{"M13"," major thirteenth"},
@@ -635,6 +642,17 @@ class Chord : public enable_shared_from_this<Chord>{
         return Interval::measure(copy->notes[0], copy->notes[1]) == 3 && Interval::measure(copy->notes[0], copy->notes[2]) == 6;
     }
     
+    bool isSuspended(){
+        if(!isValid()){
+            return false;
+        }
+        shared_ptr<Chord> copy = rootPosition();
+        if(!(copy->notes.size() >= 3)){
+            return false;
+        }
+        
+        return Interval::measure(copy->notes[0], copy->notes[1]) == 5;
+    }
     
     
 //===================================================================
@@ -806,6 +824,23 @@ class Chord : public enable_shared_from_this<Chord>{
         return _alldimchords;
     }
     
+
+    static vector<string> getAllSuspendedChords(){
+        static vector<string> _allsuschords;
+        
+        if(_allsuschords.size() == 0){
+            typedef map<string, string>::iterator it_type;
+            for(it_type iterator = ChordLookup.begin(); iterator != ChordLookup.end(); iterator++) {
+                shared_ptr<Chord>chord = Chord::create("C"+iterator->first);
+                if(chord->isSuspended()){
+                    _allsuschords.push_back(iterator->first);
+                }
+            }
+         }
+        return _allsuschords;
+    }
+    
+
 
 
     
@@ -1342,6 +1377,19 @@ class Chord : public enable_shared_from_this<Chord>{
     }
     
     
+    static shared_ptr<Chord> minorSixthNinth(NotePtr note){
+        shared_ptr<Chord> chord = Chord::minorTriad(note);
+        chord->name = "m6/9";
+        chord->setRoot(note);
+        NotePtr n = Interval::majorSixth(note);
+        chord->notes.push_back(n);
+        n = Interval::majorSecond(note);
+        n->changeOctave(1);
+        chord->notes.push_back(n);
+        return chord;
+    }
+    
+    
     /*
      Builds a major ninth chord on note.
      Example: 
@@ -1509,6 +1557,30 @@ class Chord : public enable_shared_from_this<Chord>{
         chord->notes.push_back(n);
         return chord;
     }
+    
+    
+    static shared_ptr<Chord> minorSixthNinthEleventh(NotePtr note){
+        shared_ptr<Chord> chord = Chord::minorTriad(note);
+        chord->name = "m6/9/11";
+        chord->setRoot(note);
+        NotePtr n = Interval::majorSixth(note);
+        chord->notes.push_back(n);
+        n = Interval::majorSecond(note);
+        n->changeOctave(1);
+        chord->notes.push_back(n);
+        n = Interval::perfectFourth(note);
+        n->changeOctave(1);
+        chord->notes.push_back(n);
+        return chord;
+    }
+    
+    
+    static shared_ptr<Chord> majorSeventhSharpEleventh(NotePtr note){
+        shared_ptr<Chord> chord = Chord::lydianMajorSeventh(note);
+        return chord;
+    }
+  
+    
 //===================================================================
 #pragma mark -	Thirteenths
 //===================================================================
@@ -1680,7 +1752,7 @@ class Chord : public enable_shared_from_this<Chord>{
      
      */
     
-    static shared_ptr<Chord> suspendedFourthNinth(NotePtr note){
+    static shared_ptr<Chord> suspendedFourthFlatNinth(NotePtr note){
         shared_ptr<Chord> chord = Chord::suspendedFourthTriad(note);
         chord->name = "sus4b9";
         chord->setRoot(note);
@@ -1692,6 +1764,25 @@ class Chord : public enable_shared_from_this<Chord>{
     }
     
     
+    
+    /*
+     Builds a suspended fourth flat ninth chord on note.
+     Example: 
+     suspended_ninth("C")
+     ['C', 'F', 'G',,'Bb','D']
+     
+     */
+    
+    static shared_ptr<Chord> suspendedNinth(NotePtr note){
+        shared_ptr<Chord> chord = Chord::suspendedSeventh(note);
+        chord->name = "sus9";
+        chord->setRoot(note);
+        chord->notes.push_back(note);
+        NotePtr n = Interval::majorSecond(note);
+        n->changeOctave(1);
+        chord->notes.push_back(n);
+        return chord;
+    }
     
     
     
@@ -1759,7 +1850,15 @@ class Chord : public enable_shared_from_this<Chord>{
         chord->notes[2]->augment();
         return chord;
     }
-        
+
+    static shared_ptr<Chord> augmentedDominantFlatNinth(NotePtr note){
+        shared_ptr<Chord> chord = Chord::dominantFlatNinth(note);
+        chord->name = "7+b9";
+        chord->setRoot(note);
+        chord->notes[2]->augment();
+        return chord;
+    }
+    
 //===================================================================
 //	Various
 #pragma mark -	Altered and Special chords
@@ -2982,7 +3081,7 @@ class Chord : public enable_shared_from_this<Chord>{
     }
     
 //===================================================================
-#pragma mark -		Function hash map
+#pragma mark -		CHord Lookup - Function hash map
 //===================================================================
         /*
          This accepts chord symbols without root note, eg. aug, or dim7
@@ -3017,19 +3116,26 @@ class Chord : public enable_shared_from_this<Chord>{
             {"+#9",&Chord::augmentedDominantSharpNinth},
             {"7#9#5",&Chord::augmentedDominantSharpNinth},
        
-        
+            {"7#5b9",&Chord::augmentedDominantFlatNinth},
+            {"7+b9",&Chord::augmentedDominantFlatNinth},
+            {"+7b9",&Chord::augmentedDominantFlatNinth},
+            {"+b9",&Chord::augmentedDominantFlatNinth},
+            {"7b9#5",&Chord::augmentedDominantFlatNinth},
+       
         
             
             // Suspended chords
-            
+            {"sus7",&Chord::suspendedSeventh},
             {"sus47",&Chord::suspendedSeventh},
             {"sus4",&Chord::suspendedFourthTriad},
             {"sus2",&Chord::suspendedSecondTriad},
             {"sus",&Chord::suspendedTriad},
             {"11",&Chord::eleventh},
-            {"sus4b9",&Chord::suspendedFourthNinth},
-            {"susb9",&Chord::suspendedFourthNinth},
-
+            {"sus4b9",&Chord::suspendedFourthFlatNinth},
+            {"susb9",&Chord::suspendedFourthFlatNinth},
+            {"sus9",&Chord::suspendedNinth},
+            {"sus49",&Chord::suspendedNinth},
+            
             
             //Sevenths
             {"m7",&Chord::minorSeventh},
@@ -3066,7 +3172,7 @@ class Chord : public enable_shared_from_this<Chord>{
             {"m9b5",&Chord::halfDiminishedNinth},
             {"7b9b5",&Chord::dominantFlatNinthFlatFifth},
             {"m7b9",&Chord::minorSeventhFlatNinth},
-           
+            {"m6/9",&Chord::minorSixthNinth},
             
             //Elevenths
             {"7#11",&Chord::lydianDominantSeventh},//mixolydian raised 4
@@ -3075,7 +3181,7 @@ class Chord : public enable_shared_from_this<Chord>{
             {"m11b5",&Chord::halfDiminishedEleventh},
             {"m9/11",&Chord::minorNinthEleventh},
             {"M7#11",&Chord::lydianMajorSeventh},
-
+            {"m6/9/11",&Chord::minorSixthNinthEleventh},
 
             
             //Thirteenths
@@ -3350,6 +3456,8 @@ class Chord : public enable_shared_from_this<Chord>{
                     result->push_back("sus47,"+ofToString(tries)+ ","+ root);
                 }else if(int1 == 1){
                     result->push_back("sus4b9,"+ofToString(tries)+ ","+ root);
+                }else if(int1 == 2){
+                    result->push_back("sus9,"+ofToString(tries)+ ","+ root);
                 }
                 //Other
             }else if(chStr == "m7"){
