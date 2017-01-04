@@ -255,13 +255,14 @@ class Note : public enable_shared_from_this<Note>{
         
     }
     
-    void setOctave(int oct, bool limit = false){
+    shared_ptr<Note> setOctave(int oct, bool limit = false){
         //Ableton starts at -2
         octave = oct;
         
         if(limit){
             octave = ofClamp(octave,-2,8);
         }
+        return shared_from_this();
     }
     
     int getOctave(){
@@ -285,6 +286,46 @@ class Note : public enable_shared_from_this<Note>{
     shared_ptr<Note> getOctaveDown(){
         shared_ptr<Note> n = copy();
         n->changeOctave(-1);
+        return n;
+    }
+    
+    
+    shared_ptr<Note> getNearestOctave(shared_ptr<Note> ref){
+        shared_ptr<Note> n = copy();
+        int mid = ref->getInt();
+        int currDist = n->getInt()-mid;
+        if(currDist>0){
+            //above
+            int octDownDist = ABS(n->getOctaveDown()->getInt()-mid);
+            bool cont = true;
+            while(octDownDist<currDist && cont){
+                currDist = n->getInt()-mid;
+                n->octaveDown();
+                octDownDist = ABS(n->getInt()-mid);
+                if(octDownDist>=currDist){
+                    //doesn't make a difference or same
+                    n->octaveUp();
+                    cont = false;
+               }
+            }
+        }else{
+            //below, pitch up
+            int octUpDist = ABS(n->getOctaveUp()->getInt()-mid);
+            bool cont = true;
+
+            
+            currDist = ABS(currDist);
+            while(octUpDist<currDist && cont){
+                currDist = ABS(n->getInt()-mid);
+                n->octaveUp();
+                octUpDist = ABS(n->getInt()-mid);
+                if(octUpDist>=currDist){
+                    //doesn't make a difference or same
+                    n->octaveDown();
+                    cont = false;
+               }
+            }
+        }
         return n;
     }
     
@@ -506,6 +547,8 @@ class Note : public enable_shared_from_this<Note>{
         return name;
     }
     
+
+    
     string getDiatonicName(){
       
         if(name.size()==1){
@@ -559,7 +602,12 @@ class Note : public enable_shared_from_this<Note>{
     }
     
 
-
+    int getAccidentalsInt(){
+        string cleanName = getDiatonicName();
+        int augs = ofStringTimesInString(cleanName, "#");
+        int dims = ofStringTimesInString(cleanName, "b");
+        return augs-dims;
+    }
 
 
 

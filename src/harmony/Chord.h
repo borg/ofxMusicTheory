@@ -2503,12 +2503,15 @@ class Chord : public enable_shared_from_this<Chord>{
         
         
         int mid = (bottomNote+topNote)/2;
+        NotePtr ref = Note::fromInt(mid);
         
         shared_ptr<Chord>chordCopy = chordToTransform->copy();
         deque<NotePtr>orgNotes = chordCopy->notes;
         chordCopy->notes.clear();
         
         for(NotePtr n:orgNotes){
+            n = n->getNearestOctave(ref);
+            /*
             int currDist = n->getInt()-mid;
             if(currDist>0){
                 //above
@@ -2539,7 +2542,7 @@ class Chord : public enable_shared_from_this<Chord>{
                    }
                 }
             }
-            
+            */
             chordCopy->notes.push_back(n);
             
             Chord::sortNotesOnPitch(chordCopy);
@@ -2561,12 +2564,14 @@ class Chord : public enable_shared_from_this<Chord>{
             return chordToTransform;
         }
         int mid = note->getInt();;
-        
+        shared_ptr<Note> ref = Note::fromInt(mid);
         shared_ptr<Chord>chordCopy = chordToTransform->copy();
         deque<NotePtr>orgNotes = chordCopy->notes;
         chordCopy->notes.clear();
         
         for(NotePtr n:orgNotes){
+            n = n->getNearestOctave(ref);
+            /*
             int currDist = n->getInt()-mid;
             if(currDist>0){
                 //above
@@ -2597,7 +2602,7 @@ class Chord : public enable_shared_from_this<Chord>{
                    }
                 }
             }
-            
+            */
             chordCopy->notes.push_back(n);
             
             

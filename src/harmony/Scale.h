@@ -12,24 +12,24 @@
  little overview:
  
  === The diatonic scale and its modes ===
- * diatonic(note->copy())
- * ionian(note->copy())
- * dorian(note->copy())
- * phrygian(note->copy())
- * lydian(note->copy())
- * mixolydian(note->copy())
- * aeolian(note->copy())
- * locrian(note->copy())
+ * diatonic
+ * ionian
+ * dorian
+ * phrygian
+ * lydian
+ * mixolydian
+ * aeolian
+ * locrian
  
  === The minor scales ===
- * natural_minor(note->copy())
- * harmonic_minor(note->copy())
- * melodic_minor(note->copy())
+ * natural_minor
+ * harmonic_minor
+ * melodic_minor
  
  === Other scales ===
- * chromatic(note->copy())
- * whole_note(note->copy())
- * diminished(note->copy())
+ * chromatic
+ * whole_note
+ * diminished
  
  
  ================================================================================
@@ -112,9 +112,10 @@ Any chord found in this list will replace these options for only that chord
 		{"dom7","mixolydian,pentatonicMajor,pentatonicDominant,pentatonicDominantII,pentatonicMinorV"},
 		{"7","mixolydian,pentatonicMajor,pentatonicDominant,pentatonicDominantII,pentatonicMinorV"},
 		{"m7b5","locrian,melodicMinorVI,pentatonicDominantbVI"},
-		{"dim7","lydianDiminished"},
-		{"mM7","harmonicMinor"},
-		{"mM7","harmonicMinor"},
+		{"dim7","diminished"},
+        {"dim","diminished"},
+		{"mM7","melodicMinor,harmonicMinor"},
+		
 		
 		
         //Sixths
@@ -143,7 +144,7 @@ Any chord found in this list will replace these options for only that chord
         
         //Thirteenths
 		{"M13",""},
-		{"m13",""},
+		{"m13","melodicMinor,bebopMinor"},
         
 		{"13","mixolydian,melodicMinorIV,bebopDominant,pentatonicMajor,blues"},
         
@@ -313,8 +314,9 @@ class Scale : public enable_shared_from_this<Scale> {
             "naturalMinor",
             "harmonicMinor",
             "flamenco",
-            "diminished",
+            "≈",
             "bebopDominant",
+            "bebopMinor",
             "blues",
             "lydianDiminished",
             "lydianDominant",
@@ -1599,6 +1601,34 @@ class Scale : public enable_shared_from_this<Scale> {
         return Scale::getBebopDominant(Note::create(note));
     }
     
+    
+    /*
+    Dorian with added major third
+    m13
+    https://en.wikipedia.org/wiki/Bebop_scale#Bebop_Dorian_scale
+    */
+    
+    static deque<NotePtr> bebopMinor(NotePtr note){
+        deque<NotePtr> scale = Scale::dorian(note->copy());
+        NotePtr majThird = scale[2]->getAugmented();
+        scale.insert(scale.begin()+3, majThird);
+        return scale;
+    }
+    
+    static shared_ptr<Scale> getBebopMinor(NotePtr note){
+        if(!Note::isValid(note)){return 0;}
+        shared_ptr<Scale> scale = Scale::create();
+        scale->name = "bebopMinor";
+        scale->notes = Scale::bebopMinor(note->copy());
+        return scale;
+    }
+    
+    
+    static shared_ptr<Scale> getBebopMinor(string note){
+        return Scale::getBebopMinor(Note::create(note));
+    }
+    
+    
     /*
      Borg: This is the unique minor flamenco scale,
      a phrygian with added major third
@@ -1936,7 +1966,9 @@ class Scale : public enable_shared_from_this<Scale> {
         }
     }
     
-    
+    /*
+    Accepts scale degree
+    */
     NotePtr getNote(int i){
         if(isValid()){
             int oct = 0;
@@ -1957,7 +1989,26 @@ class Scale : public enable_shared_from_this<Scale> {
             ofLogWarning()<<"Scale invalid"<<endl;
         }
     }
+
+
     
+    int getDegree(NotePtr n){
+        if(isValid()){
+            NotePtr n1 = n->setOctave(getOctave());
+            
+            for(int i = 0;i<notes.size();i++){
+                if(n1->getInt() == notes[i]->getInt()){
+                    return i;
+                }
+            
+            }
+            cout<<"Note "<<n<<" not found in scale"<<endl;
+            return -1;//not found
+            
+        }else{
+            ofLogWarning()<<"Scale invalid"<<endl;
+        }
+    }
     
     NotePtr getClosestNote(NotePtr note, bool ifNotInScaleSelectNextHigher = true){
         if(isValid()){
@@ -2238,6 +2289,7 @@ private:
             {"flamenco",&Scale::getFlamenco},
             {"diminished",&Scale::getDiminished},
             {"bebopDominant",&Scale::getBebopDominant},
+            {"bebopMinor",&Scale::getBebopMinor},
             {"blues",&Scale::getBlues},
             {"lydianDiminished",&Scale::getLydianDiminished},
             {"lydianDominant",&Scale::getLydianDominant},

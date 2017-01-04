@@ -21,7 +21,7 @@ using Poco::RegularExpression;
 namespace MusicTheory{
     
     typedef NotePtr (*IntervalFunctionPointer)(NotePtr);
-    typedef map<int,IntervalFunctionPointer> IntervalFuncLookup;
+    typedef map<string,IntervalFunctionPointer> IntervalFuncLookup;
  
     static vector<string>romanNumerals = {
             "I",
@@ -88,17 +88,17 @@ class Interval {
      */
     
     static NotePtr minorUnison(NotePtr note){
-        NotePtr n(note);
+        NotePtr n = note->copy();
         n->diminish();
         return n;
     }
     
     static NotePtr majorUnison(NotePtr note){
-        return note;
+        return note->copy();
     }
     
     static NotePtr augmentedUnison(NotePtr note){
-        NotePtr n(note);
+        NotePtr n = note->copy();
         n->augment();
         return n;
     }
@@ -173,28 +173,22 @@ class Interval {
         return Interval::majorFourth( note);
     }
     
+    static NotePtr augmentedFourth(NotePtr note){
+       return Interval::minorFifth( note);
+    }
+    
     static NotePtr minorFifth(NotePtr note){
         NotePtr n = note->copy();
         n->transpose(6);
         return n;
-        /*
-        NotePtr fif = Interval::fifth(note.getNatural(), NotePtr("C"));
-        return Interval::findInterval(note, fif, 6);
-         */
     }
     
-    /*
-    static NotePtr majorFifth(NotePtr note){
-        NotePtr n = note->copy();
-        n->transpose(7);//in Mingus this is 7, but that doesn't augment the fifth
-        return n;
-    }*/
+
     
     static NotePtr perfectFifth(NotePtr note){
         NotePtr n = note->copy();
-        n->transpose(7);//in Mingus this is 7, but that doesn't augment the fifth
+        n->transpose(7);
         return n;
-       // return Interval::majorFifth(note);
     }
     
     static NotePtr augmentedFifth(NotePtr note){
@@ -204,48 +198,113 @@ class Interval {
     }
     
     
+    static NotePtr majorFifth(NotePtr note){
+        return Interval::augmentedFifth( note);
+    }
+    
     static NotePtr minorSixth(NotePtr note){
-        
-        NotePtr n = note->copy();
-        n->transpose(8);
-        return n;
-        /*
-        NotePtr sth = Interval::sixth(note.getNatural(), NotePtr("C"));
-        return Interval::findInterval(note, sth, 8);*/
+       return Interval::augmentedFifth( note);
     }
     
     static NotePtr majorSixth(NotePtr note){
         NotePtr n = note->copy();
         n->transpose(9);
         return n;
-        
-        //why would I use these??!!
-        //NotePtr sth = Interval::sixth(note.getNatural(),NotePtr("C"));
-        //return Interval::findInterval(note, sth, 9);
     }
     
     static NotePtr minorSeventh(NotePtr note){
         NotePtr n = note->copy();
         n->transpose(10);
         return n;
-        
-        /*
-        NotePtr sth = Interval::seventh(note.getNatural(), NotePtr("C"));
-       return Interval::findInterval(note, sth, 10);
-         */
     }
     
     static NotePtr majorSeventh(NotePtr note){
         NotePtr n = note->copy();
         n->transpose(11);
         return n;
-        
-        /*
-        NotePtr sth = Interval::seventh(note.getNatural(), NotePtr("C"));
-        return Interval::findInterval(note, sth, 11);
-         */
     }
     
+    static NotePtr octave(NotePtr note){
+        NotePtr n = note->copy();
+        n->transpose(12);
+        return n;
+    }
+
+    static NotePtr minorNinth(NotePtr note){
+        NotePtr n = note->copy();
+        n->transpose(13);
+        return n;
+    }
+    
+    static NotePtr majorNinth(NotePtr note){
+        NotePtr n = note->copy();
+        n->transpose(14);
+        return n;
+    }
+    
+    static NotePtr minorTenth(NotePtr note){
+        NotePtr n = note->copy();
+        n->transpose(15);
+        return n;
+    }
+    
+    static NotePtr majorTenth(NotePtr note){
+        NotePtr n = note->copy();
+        n->transpose(16);
+        return n;
+    }
+    
+    static NotePtr perfectEleventh(NotePtr note){
+        NotePtr n = note->copy();
+        n->transpose(17);
+        return n;
+    }
+    
+    static NotePtr augmentedEleventh(NotePtr note){
+        NotePtr n = note->copy();
+        n->transpose(18);
+        return n;
+    }
+    
+    static NotePtr perfectTwelvth(NotePtr note){
+        NotePtr n = note->copy();
+        n->transpose(19);
+        return n;
+    }
+    
+    static NotePtr augmentedTwelvth(NotePtr note){
+        NotePtr n = note->copy();
+        n->transpose(20);
+        return n;
+    }
+    
+    static NotePtr minorThirteenth(NotePtr note){
+       return Interval::augmentedTwelvth( note);
+    }
+    
+    static NotePtr majorThirteenth(NotePtr note){
+        NotePtr n = note->copy();
+        n->transpose(21);
+        return n;
+    }
+    
+    static NotePtr minorFourteenth(NotePtr note){
+        NotePtr n = note->copy();
+        n->transpose(22);
+        return n;
+    }
+    
+    static NotePtr majorFourteenth(NotePtr note){
+        NotePtr n = note->copy();
+        n->transpose(23);
+        return n;
+    }
+    
+    static NotePtr doubleOctave(NotePtr note){
+        NotePtr n = note->copy();
+        n->transpose(24);
+        return n;
+    }
     
     
     //(Helper) Functions
@@ -463,36 +522,34 @@ class Interval {
     
     
     /*
-     Returns the note on interval up or down.
-     Example:
-     {{{
-     >>> from_shorthand("A", "b3")
-     'C'
-     >>> from_shorthand("D", "-2")
-     'C'
-     >>> from_shorthand("E", "2", False)
-     'D'
+    Returns the note on a named interval up or down.
+    Named intervals are
+    1 unison
+    b2 minor second etc. up to 13.
+    Each can be altered, eg. b3 or #11 and negative -3
      */
     
-    static NotePtr fromShorthand(NotePtr note, string interval){
-        string last = interval.substr(interval.size()-1);
-        int intNum = ofToInt(last);//strips b from b3..shoujld be in range 1-7
-        bool down = (bool) (interval.substr(0,1)=="-");
+    static NotePtr fromName(NotePtr note, string interval){
+        bool neg = (bool) (interval.substr(0,1)=="-");
+        NotePtr n = (*IntervalFunctionLookup()[interval])(note);
         
-        NotePtr n;
-        if(down){
-            n = (*IntervalFunctionLookup()[-intNum])(note);
+        ofStringReplace(interval,"-","");
+        ofStringReplace(interval,"b","");
+        ofStringReplace(interval,"#","");
+        
+        int diff = ofToInt(interval);
+        int octDiff = floor(diff/8);
+        
+        
+        
+        if(neg){
+            n->changeOctave(-octDiff-1);
         }else{
-            n = (*IntervalFunctionLookup()[intNum])(note);
+            if(diff == 15){
+                octDiff = 2;//15 should round up to 2 oct
+            }
+            n->changeOctave(octDiff);
         }
-        
-        //this makes no sense...you should already have the right note now from the shorthand
-        int augs = ofStringTimesInString(interval, "#");
-        int dims = ofStringTimesInString(interval, "b");
-        int diff = augs - dims;
-        
-        n->transpose(diff);
-    
         return n;
     }
     
@@ -610,24 +667,89 @@ private:
         return result;
     }
     
-    
+    /*
+    Names from Mark Levine - Jazz Theory
+    This returns note in same octave. Transpose octave outside.
+    Use with fromName.
+    */
     
     static IntervalFuncLookup IntervalFunctionLookup(){
         static const IntervalFuncLookup _intervalFunctionLookup = {
-            {-7,&Interval::minorSecond},
-            {-6,&Interval::minorThird},
-            {-5,&Interval::majorFourth},
-            {-4,&Interval::perfectFifth},
-            {-3,&Interval::minorSixth},
-            {-2,&Interval::minorSeventh},
-            {-1,&Interval::majorUnison},
-            {1,&Interval::majorUnison},
-            {2,&Interval::majorSecond},
-            {3,&Interval::majorThird},
-            {4,&Interval::majorFourth},
-            {5,&Interval::perfectFifth},
-            {6,&Interval::majorSixth},
-            {7,&Interval::majorSeventh}
+            
+            {"-15",&Interval::majorUnison},
+            
+            {"-14",&Interval::minorSecond},
+            {"-b14",&Interval::majorSecond},
+            {"-13",&Interval::minorThird},
+            {"-b13",&Interval::majorThird},
+            {"-#12",&Interval::majorThird},
+            {"-12",&Interval::perfectFourth},
+            {"-b12",&Interval::augmentedFourth},
+            {"-#11",&Interval::augmentedFourth},
+            {"-11",&Interval::perfectFifth},
+            {"-10",&Interval::minorSixth},
+            {"-b10",&Interval::majorSixth},
+            {"-#9",&Interval::majorSixth},
+            {"-9",&Interval::minorSeventh},
+            {"-b9",&Interval::majorSeventh},
+            
+            {"-8",&Interval::majorUnison},
+            
+            {"-7",&Interval::minorSecond},
+            {"-b7",&Interval::majorSecond},
+            {"-6",&Interval::minorThird},
+            {"-b6",&Interval::majorThird},
+            {"-#5",&Interval::majorThird},
+            {"-5",&Interval::perfectFourth},
+            {"-b5",&Interval::augmentedFourth},
+            {"-#4",&Interval::augmentedFourth},
+            {"-4",&Interval::perfectFifth},
+            {"-b4",&Interval::minorSixth},
+            {"-#3",&Interval::perfectFifth},
+            {"-3",&Interval::minorSixth},
+            {"-b3",&Interval::majorSixth},
+            {"-#2",&Interval::majorSixth},
+            {"-2",&Interval::minorSeventh},
+            {"-b2",&Interval::majorSeventh},
+            {"-1",&Interval::majorUnison},
+            
+            {"1",&Interval::majorUnison},
+            {"b2",&Interval::minorSecond},
+            {"2",&Interval::majorSecond},
+            {"#2",&Interval::minorThird},
+            {"b3",&Interval::minorThird},
+            {"3",&Interval::majorThird},
+            {"#3",&Interval::perfectFourth},
+            {"b4",&Interval::majorThird},
+            {"4",&Interval::perfectFourth},
+            {"#4",&Interval::augmentedFourth},
+            {"b5",&Interval::augmentedFourth},
+            {"5",&Interval::perfectFifth},
+            {"#5",&Interval::minorSixth},
+            {"b6",&Interval::minorSixth},
+            {"6",&Interval::majorSixth},
+            {"b7",&Interval::minorSeventh},
+            {"7",&Interval::majorSeventh},
+            
+            {"8",&Interval::majorUnison},
+            
+            {"b9",&Interval::minorSecond},
+            {"9",&Interval::majorSecond},
+            {"#9",&Interval::minorThird},
+            {"b10",&Interval::minorThird},
+            {"10",&Interval::majorThird},
+            {"11",&Interval::perfectFourth},
+            {"#11",&Interval::augmentedFourth},
+            {"b12",&Interval::augmentedFourth},
+            {"12",&Interval::perfectFifth},
+            {"#12",&Interval::minorSixth},
+            {"b13",&Interval::minorSixth},
+            {"13",&Interval::majorSixth},
+            {"b14",&Interval::minorSeventh},
+            {"14",&Interval::majorSeventh},
+            
+            {"15",&Interval::majorUnison},
+            
         };
     
         return _intervalFunctionLookup;
