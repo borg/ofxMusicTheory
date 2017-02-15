@@ -197,8 +197,29 @@ class Scale : public enable_shared_from_this<Scale> {
         return shared_ptr<Scale>(new Scale());
     }
     
+    /*
+    Argument needs to be formatted as getName() returns it,
+    eg. A dorian
+    */
+    static shared_ptr<Scale>create(string fullName){
+        shared_ptr<Scale> s = shared_ptr<Scale>(new Scale());
+        vector<string>parts = ofSplitString(fullName," ");
+        if(parts.size()==2){
+            NotePtr root = Note::create(parts[0]);
+            string name = parts[1];
+            s = Scale::getScaleFromString(name,root);
+            
+        }
+        return s;
+    }
+    
     shared_ptr<Scale> copy(){
-        return shared_ptr<Scale>(new Scale(*this));//copy
+        shared_ptr<Scale>s = shared_ptr<Scale>(new Scale(*this));
+        s->notes.clear();
+        for(NotePtr n:notes){
+            s->notes.push_back(n->copy());
+        }
+        return s;
     }
     
 //===================================================================
@@ -215,7 +236,7 @@ class Scale : public enable_shared_from_this<Scale> {
         string fullName = "";
         
         if(notes.size()){
-            fullName += notes[0]->getName();
+            fullName += notes[0]->getDiatonicName();
         }
         
         fullName +=" "+ name;
@@ -1967,7 +1988,7 @@ class Scale : public enable_shared_from_this<Scale> {
     }
     
     /*
-    Accepts scale degree
+    Accepts scale degree starting on 0.
     */
     NotePtr getNote(int i){
         if(isValid()){
@@ -1990,19 +2011,19 @@ class Scale : public enable_shared_from_this<Scale> {
         }
     }
 
-
+    /*
+    Get scale degree starting on 0.
+    Note: Does not distinguish between scales with more or less than 7 notes.
+    */
     
     int getDegree(NotePtr n){
         if(isValid()){
-            NotePtr n1 = n->setOctave(getOctave());
-            
             for(int i = 0;i<notes.size();i++){
-                if(n1->getInt() == notes[i]->getInt()){
+                if(n->getInt()%12 == notes[i]->getInt()%12){
                     return i;
                 }
-            
             }
-            cout<<"Note "<<n<<" not found in scale"<<endl;
+            cout<<"Note "<<n<<" not found in scale "<<notes[0]<<" "<<name<<endl;
             return -1;//not found
             
         }else{
@@ -2048,7 +2069,39 @@ class Scale : public enable_shared_from_this<Scale> {
             return note->copy();
         }
     }
-    
+
+
+    /*
+    Useful eg. for finding the third closest to C3.
+    */
+    NotePtr getDegreeClosestToNote(int degree, NotePtr note){
+        if(isValid()){
+            int startNote = note->getInt();
+            int startOct = note->getAbsoluteOctave();
+            
+            
+            NotePtr searchNote = Scale::getNote(degree);
+            searchNote->setOctave(startOct);
+            NotePtr above = searchNote->getOctaveUp();
+            NotePtr below = searchNote->getOctaveDown();
+            
+            int dif1 = abs(startNote-searchNote->getInt());
+            int dif2 = abs(startNote-above->getInt());
+            int dif3 = abs(startNote-below->getInt());
+            
+            if(dif1 <= dif2 && dif1 <= dif3){
+                return searchNote;
+            }else if(dif2 <= dif1 && dif2 <= dif3){
+                return above;
+            }else{
+                return below;
+            }
+            
+        }else{
+            ofLogWarning()<<"Scale invalid"<<endl;
+            return note->copy();
+        }
+    }
 
 //===================================================================
 #pragma mark - SCALES FOR CHORDS
@@ -2155,6 +2208,7 @@ class Scale : public enable_shared_from_this<Scale> {
         shared_ptr<Scale> s;
         for(int i=0;i<scales.size();i++){
             s = Scale::getScaleFromString(scales[i],chord->getRoot());
+            s->setOctave(3);
             scalesInKey.push_back(s);
         }
         return scalesInKey;

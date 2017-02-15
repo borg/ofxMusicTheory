@@ -91,7 +91,7 @@
 
 #include "ofMain.h"
 #include "Note.h"
-
+#include "Interval.h"
 
 namespace MusicTheory{
 
@@ -400,7 +400,14 @@ class Chord : public enable_shared_from_this<Chord>{
     }
     
     shared_ptr<Chord> copy(){
-        return shared_ptr<Chord>(new Chord(*this));//copy
+        shared_ptr<Chord>s = shared_ptr<Chord>(new Chord(*this));
+        s->notes.clear();
+        for(NotePtr n:notes){
+            s->notes.push_back(n->copy());
+        }
+        return s;
+        
+        
     }
 
 //===================================================================

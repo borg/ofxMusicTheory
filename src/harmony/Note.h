@@ -289,6 +289,22 @@ class Note : public enable_shared_from_this<Note>{
         return n;
     }
     
+    void limitToOctaves(int minOct,int maxOct){
+        if(getOctave()<minOct){
+            changeOctave(minOct-getOctave());
+        }
+        
+        if(getOctave()>maxOct){
+            changeOctave(maxOct - getOctave());
+        }
+    }
+    
+    shared_ptr<Note> getLimitToOctaves(int minOct,int maxOct){
+        shared_ptr<Note> n = copy();
+        n->limitToOctaves(minOct,maxOct);
+        return n;
+    
+    }
     
     shared_ptr<Note> getNearestOctave(shared_ptr<Note> ref){
         shared_ptr<Note> n = copy();
