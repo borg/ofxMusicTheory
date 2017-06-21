@@ -144,6 +144,7 @@ namespace MusicTheory{
         
         //Suspended Chord
 		{"sus47"," suspended seventh"},
+        {"sus11"," suspended eleventh"},
 		{"sus4"," suspended fourth triad"},
 		{"sus2"," suspended second triad"},
 		{"sus"," suspended fourth triad"},
@@ -3139,6 +3140,7 @@ class Chord : public enable_shared_from_this<Chord>{
             // Suspended chords
             {"sus7",&Chord::suspendedSeventh},
             {"sus47",&Chord::suspendedSeventh},
+            {"sus11",&Chord::suspendedSeventh},
             {"sus4",&Chord::suspendedFourthTriad},
             {"sus2",&Chord::suspendedSecondTriad},
             {"sus",&Chord::suspendedTriad},

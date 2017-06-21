@@ -338,10 +338,10 @@ class Interval {
     steps between note1 and note2.
      */
     
-    static int measure(const NotePtr note1, const NotePtr note2){
+    static int measure(const NotePtr note1, const NotePtr note2, bool acceptNegative = false){
 
         int res = note2->toInt(true) - note1->toInt(true);
-        if(res < 0){
+        if(res < 0 && !acceptNegative){
             return 12 - (res * (-1));
         }else{
             return res;

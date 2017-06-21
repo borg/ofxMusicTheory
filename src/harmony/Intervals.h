@@ -13,7 +13,7 @@
 
 #include "ofMain.h"
 #include "Note.h"
-#include "Utils.h"
+//#include "Utils.h"
 #include "Diatonic.h"
 //class NotePtr;
 namespace MusicTheory{
